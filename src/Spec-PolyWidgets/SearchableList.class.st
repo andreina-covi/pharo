@@ -27,26 +27,35 @@ SearchableList class >> defaultSpec [
 		yourself
 ]
 
+{ #category : #example }
+SearchableList class >> example [
+	<sampleInstance>
+	"self example"
+
+	^ self new
+		items: #(#aaa #abc #axz #bbb #bfbg #bof #c); openWithSpec
+]
+
 { #category : #initialization }
 SearchableList >> initializePresenter [
-	searchPresenter
-		whenTextChangedDo: [ :newText | 
-			| text |
-			text := searchPresenter getText asLowercase.
-			text isEmpty
-				ifTrue: [ listPresenter model resetFilter ]
-				ifFalse: [ listPresenter model
-						filterWith:
-							[ :element :col | element asLowercase beginsWith: searchPresenter getText asLowercase ] ] ]
+
+	searchPresenter whenTextChanged: [:newText || text |
+		text :=  searchPresenter getText asLowercase.
+		text isEmpty
+			ifTrue: [ listPresenter resetFilteringBlock ]
+			ifFalse: [
+				listPresenter filteringBlock: [:col | col select: [:e | e asLowercase beginsWith: searchPresenter getText asLowercase ]]]]
 ]
 
 { #category : #initialization }
 SearchableList >> initializeWidgets [
+
 	listPresenter := self newList.
 	searchPresenter := self newTextInput.
-	searchPresenter
+		
+	searchPresenter 
 		autoAccept: true;
-		placeholder: 'filter'
+		ghostText: 'filter'.
 ]
 
 { #category : #accessing }

@@ -1,6 +1,6 @@
 Class {
 	#name : #RBTransformationTest,
-	#superclass : #TestCase,
+	#superclass : #AbstractEnvironmentTestCase,
 	#instVars : [
 		'manager',
 		'model'
@@ -15,7 +15,7 @@ RBTransformationTest >> abstractVariableTestData [
 	classes := #(#Bar #Foo) 
 		inject: OrderedCollection new 
 		into: [ :sum :each | 
-			Smalltalk globals at: each ifPresent: [ :class | 
+			testingEnvironment at: each ifPresent: [ :class | 
 				sum add: class; add: class class ].
 			sum ].
 	classEnvironment := RBClassEnvironment classes: classes.
@@ -79,7 +79,7 @@ RBTransformationTest >> abstractVariableTestData [
 { #category : #mocking }
 RBTransformationTest >> changeMock [
 
-	^ Smalltalk globals at: #RBRefactoringChangeMock
+	^ testingEnvironment at: #RBRefactoringChangeMock
 ]
 
 { #category : #mocking }
@@ -103,6 +103,16 @@ RBTransformationTest >> objectClassVariable [
 	^ Object classPool keys detect: [:each | true]
 ]
 
+{ #category : #parsing }
+RBTransformationTest >> parseMethod: aString [
+	^ self parserClass parseMethod: aString
+]
+
+{ #category : #parsing }
+RBTransformationTest >> parserClass [
+	^ RBParser
+]
+
 { #category : #running }
 RBTransformationTest >> perform: aChange do: aBlock [
 	"Perform a change in the system silently, evaluate aBlock and then undo the change again."
@@ -124,7 +134,7 @@ RBTransformationTest >> proceedThroughWarning: aBlock [
 { #category : #mocking }
 RBTransformationTest >> removeMockClass [
 
-	Smalltalk globals removeClassNamed: #RBRefactoringChangeMock.
+	testingEnvironment removeClassNamed: #RBRefactoringChangeMock.
 ]
 
 { #category : #running }
@@ -132,8 +142,6 @@ RBTransformationTest >> setUp [
 
 	super setUp.
 	self createMockClass.
-	manager := RBRefactoringManager classVarNamed: #Instance.
-	RBRefactoringManager classVarNamed: #Instance put: nil.
 	model := RBNamespace2 new
 ]
 
@@ -147,8 +155,6 @@ RBTransformationTest >> shouldFail: aRefactoring [
 { #category : #running }
 RBTransformationTest >> tearDown [
 
-	RBRefactoringManager instance release.
-	RBRefactoringManager classVarNamed: #Instance put: manager.
 	self removeMockClass.
 	super tearDown
 ]

@@ -19,6 +19,11 @@ You can disable this with the method #disableSearch.
 But you also have the possibility to make your FastTable filterable with the method #enableFilter. But search and filter cannot be use in the same time.
 
 I manage different kind of selections through a strategy design pattern. For example I have a strategy to manage simple or multiple selection and I have a strategy to manage cell or row selection.
+
+Horizontal scrolling being a new feature is not enabled by default. Use #newWithHorizontalScrollBar or set horizontalScrollBar var to anything at early initialization stage (before #initializeScrollBars where it is being checked)
+
+
+
 "
 Class {
 	#name : #FTTableMorph,
@@ -43,7 +48,6 @@ Class {
 		'needToggleAtMouseUp',
 		'function',
 		'resizable',
-		'trialHSB',
 		'selectionModeStrategy'
 	],
 	#category : #'Morphic-Widgets-FastTable'
@@ -94,10 +98,10 @@ FTTableMorph class >> defaultSelectionColor [
 ]
 
 { #category : #temporary }
-FTTableMorph class >> newTrialHorizontalScrollBar [
-	"This method just temporary to guard new changes from hurtingtools durign development"
+FTTableMorph class >> newWithHorizontalScrollBar [
+	"This method is temporary to introduce horisontal scrolling gradually"
 	"See GTExamples class >> exampleTableHorizontalScroll"
-	^self basicNew initializeTrialHorizontalScrollBar
+	^self basicNew initializeWithHorizontalScrollBar
 ]
 
 { #category : #'drag and drop' }
@@ -127,6 +131,17 @@ FTTableMorph >> allowsDeselection: aBoolean [
 	allowsDeselection := aBoolean
 ]
 
+{ #category : #private }
+FTTableMorph >> announceScrollChangedFrom: oldIndex to: newIndex [
+	"If the index did not change, do nothing"
+	oldIndex = newIndex ifTrue: [ ^ self ].
+	self
+		doAnnounce:
+			((FTScrollingChanged from: oldIndex to: newIndex)
+				fastTable: self;
+				yourself)
+]
+
 { #category : #updating }
 FTTableMorph >> autoScrollHeightLimit [
 
@@ -146,8 +161,8 @@ FTTableMorph >> basicHighlightRowIndexes: anArray [
 
 { #category : #private }
 FTTableMorph >> basicMoveShowIndexTo: aNumber [
-	showIndex := aNumber.
 
+	showIndex := aNumber
 ]
 
 { #category : #private }
@@ -179,6 +194,20 @@ FTTableMorph >> beNotResizable [
 { #category : #accessing }
 FTTableMorph >> beResizable [
 	resizable := true
+]
+
+{ #category : #accessing }
+FTTableMorph >> beRowNotHomogeneous [
+	"by default, tables have homogeneous row heigths, taken from rowHeight variable. 
+	 We can switch to variable size by sending this message. 
+	 The resulting table will be less effcicient than the first, but probably not in a way users 
+	 can notice"
+	| oldContainer |
+
+	oldContainer := container.
+	container := FTTableContainerRowNotHomogeneousMorph new.
+	self replaceSubmorph: oldContainer by: container.
+	self resizeAllSubviews
 ]
 
 { #category : #accessing }
@@ -263,7 +292,7 @@ FTTableMorph >> deselectAll [
 FTTableMorph >> disableFunction [
 	"Disabling it just sets the funtion to nil, so I can safely skip it in #keyStrokeSearch:"
 
-	function isExplicite
+	function isExplicit
 		ifTrue: [ function disable.
 			self resizeAllSubviews	"This is call because now the container will take all the available space." ].
 	function := FTNilFunction table: self
@@ -349,6 +378,12 @@ FTTableMorph >> extent: aPoint [
 	self resizeAllSubviews
 ]
 
+{ #category : #accessing }
+FTTableMorph >> firstVisibleRowIndex [
+	
+	^ self container firstVisibleRowIndex
+]
+
 { #category : #'event handling' }
 FTTableMorph >> handleMouseMove: anEvent [
 	"Reimplemented because we really want #mouseMove when a morph is dragged around"
@@ -399,17 +434,6 @@ FTTableMorph >> hasSelection [
 { #category : #'accessing colors' }
 FTTableMorph >> headerColor [
 	^ headerColor ifNil: [ self class defaultHeaderColor ]
-]
-
-{ #category : #'accessing colors' }
-FTTableMorph >> headerColor: aColor [
-	self
-		deprecated:
-			'This method will be removed in the next Pharo version. The header color is not the responsibility of the FastTable. If you want to change the color of the table''s header you should do it in the datasource. In the datasource there is a method to return a header''s cell, you should change the color there.'
-		on: '29-04-2019'
-		in: #Pharo8.
-	"When this method will be removed, remove also #headerColor and related methods."
-	headerColor := aColor
 ]
 
 { #category : #accessing }
@@ -482,7 +506,7 @@ FTTableMorph >> horizontalScrollBar [
 
 { #category : #private }
 FTTableMorph >> horizontalScrollBarHeight [
-	^trialHSB 
+	^horizontalScrollBar 
 		ifNil: [ 0 ] 
 		ifNotNil: [ 
 			self isHorizontalScrollBarVisible ifFalse: [ ^ 0 ].
@@ -492,9 +516,8 @@ FTTableMorph >> horizontalScrollBarHeight [
 
 { #category : #private }
 FTTableMorph >> horizontalScrollBarValue: aNumber [
-	trialHSB ifNotNil: [ 
-		self inform: 'FTTableMorph>>#horizontalScrollBarValue: ', aNumber printString , String cr, 
-			'Does nothing yet.' , String cr, 'Need some advise here.'
+	horizontalScrollBar ifNotNil: [ 
+	self container adjustToHorizontalScrollBarValue: aNumber.
 	].
 ]
 
@@ -557,7 +580,9 @@ FTTableMorph >> initializeScrollBars [
 		yourself.
 	self addMorph: verticalScrollBar.
 
-	trialHSB ifNotNil: [ 	
+	"introducing horizontal scrolling gradually: 
+	enable the feature only when the var is set during initialization"
+	horizontalScrollBar ifNotNil: [ 	
 		horizontalScrollBar := ScrollBar new 
 			model: self; 
 			setValueSelector: #horizontalScrollBarValue:;
@@ -573,8 +598,8 @@ FTTableMorph >> initializeSelectedIndexes [
 ]
 
 { #category : #initialization }
-FTTableMorph >> initializeTrialHorizontalScrollBar [
-	trialHSB := true.
+FTTableMorph >> initializeWithHorizontalScrollBar [
+	horizontalScrollBar := true.
 	self initialize.
 ]
 
@@ -593,7 +618,7 @@ FTTableMorph >> intercellSpacing: aNumberOrPoint [
 
 { #category : #private }
 FTTableMorph >> isHorizontalScrollBarVisible [
-	^trialHSB 
+	^horizontalScrollBar 
 		ifNil: [ false ] 
 		ifNotNil: [ 
 			self horizontalScrollBar owner isNotNil.
@@ -705,6 +730,12 @@ FTTableMorph >> keyboardFocusChange: aBoolean [
 	self focusChanged
 ]
 
+{ #category : #accessing }
+FTTableMorph >> lastVisibleRowIndex [
+
+	^ self container lastVisibleRowIndex
+]
+
 { #category : #layout }
 FTTableMorph >> minHeight [ 
 	"Ceiling is required because there is strange behavior when this method return float.
@@ -806,11 +837,14 @@ FTTableMorph >> moveShowIndexTo: arg [
 	 showing pointer should do it directly. 
 	 Use me just in case you need to force a refresh after settign the index"
 
-	| index |
+	| index oldIndex |
 	index := self selectionModeStrategy rowIndexFrom: arg.
+	oldIndex := showIndex.
 	self basicMoveShowIndexTo: index.
 	self verticalScrollBar value: (self rowIndexToVerticalScrollBarValue: index).
-	self refresh
+	self refresh.
+	
+	self announceScrollChangedFrom: oldIndex to: index.
 ]
 
 { #category : #accessing }
@@ -834,6 +868,7 @@ FTTableMorph >> recalculateVerticalScrollBar [
 	 
 	visibleRows := self container calculateExactVisibleRows.	
 	numberOfRows := self dataSource numberOfRows.
+	numberOfRows = 0 ifTrue: [ ^self ].
 	interval := (visibleRows / numberOfRows) asFloat.
 	delta := 1/numberOfRows.
 	pageDelta := ((visibleRows-1) floor)*delta.
@@ -866,7 +901,7 @@ FTTableMorph >> refresh [
 	self ensureAtLeastOneColumn.
 	self recalculateVerticalScrollBar.
 	self verticalScrollBar changed.
-	trialHSB ifNotNil: [ self horizontalScrollBar changed ].
+	horizontalScrollBar ifNotNil: [ self horizontalScrollBar changed ].
 	self container changed
 	
 ]
@@ -881,7 +916,7 @@ FTTableMorph >> resetPosition [
 	"Resets all values to original value"
 	showIndex := 0.
 	self verticalScrollBar value: 0.
-	trialHSB ifNotNil: [	self horizontalScrollBar value: 0 ].
+	horizontalScrollBar ifNotNil: [	self horizontalScrollBar value: 0 ].
 	self container setNeedsRefreshExposedRows.
 	self container updateExposedRows.
 ]
@@ -889,7 +924,7 @@ FTTableMorph >> resetPosition [
 { #category : #private }
 FTTableMorph >> resizeAllSubviews [
 	self resizeVerticalScrollBar.
-	trialHSB ifNotNil: [ self resizeHorizontalScrollBar ].
+	horizontalScrollBar ifNotNil: [ self resizeHorizontalScrollBar ].
 	"if we resized scrollbar, we need to recalculate it because values change (and now visibility 
 	 can be toggled, shown items can change, etc.)"
 	self recalculateVerticalScrollBar.
@@ -897,7 +932,7 @@ FTTableMorph >> resizeAllSubviews [
 	self container setNeedsRefreshExposedRows.
 	self container updateExposedRows.
 	self verticalScrollBar value: (self rowIndexToVerticalScrollBarValue: showIndex).
-	function isExplicite
+	function isExplicit
 		ifTrue: [ function resizeWidget ]
 ]
 
@@ -909,7 +944,7 @@ FTTableMorph >> resizeContainer [
 					 @ (self bounds bottom - self horizontalScrollBarHeight - self borderWidth).
 	self container
 		bounds:
-			(function isExplicite
+			(function isExplicit
 				ifTrue: [ function resizeContainerFrom: topLeft to: bottomRight ]
 				ifFalse: [ topLeft corner: bottomRight ])
 ]
@@ -917,7 +952,7 @@ FTTableMorph >> resizeContainer [
 { #category : #private }
 FTTableMorph >> resizeHorizontalScrollBar [
 	| width height corner |
-	trialHSB ifNotNil: [ 
+	horizontalScrollBar ifNotNil: [ 
 		width := self bounds width - (self borderWidth * 2) - self verticalScrollBarWidth.
 		height := self scrollBarThickness.
 		corner := self bounds bottomLeft - ((width + self borderWidth)@(0 - self borderWidth)).
@@ -960,6 +995,15 @@ FTTableMorph >> rowIndexToVerticalScrollBarValue: aNumber [
 { #category : #private }
 FTTableMorph >> scrollBarThickness [
 	^ self theme scrollbarThickness
+]
+
+{ #category : #private }
+FTTableMorph >> scrollToIndex: anIndex [
+	(self container isRowIndexFullyVisible: anIndex) ifTrue: [ ^ self ].
+
+	anIndex <= self showIndex
+		ifTrue: [ self moveShowIndexTo: anIndex ]
+		ifFalse: [ self moveShowIndexTo: (self selectionModeStrategy indexForRow: anIndex - self container calculateMinVisibleRows + 1) ]
 ]
 
 { #category : #'accessing colors' }

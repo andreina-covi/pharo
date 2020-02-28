@@ -56,10 +56,15 @@ MorphicTextAdapter >> autoAccept: aBoolean [
 	^ self model autoAccept: aBoolean
 ]
 
+{ #category : #'widget API' }
+MorphicTextAdapter >> behavior [
+
+	^ self model behavior
+]
+
 { #category : #factory }
 MorphicTextAdapter >> buildWidget [
 	| newWidget |
-
 	newWidget := RubPluggableTextMorph new
 		on: self
 			text: #getText
@@ -78,18 +83,18 @@ MorphicTextAdapter >> buildWidget [
 		dropEnabled: self dropEnabled;
 		registerScrollChanges: #scrollValueChanged:;
 		yourself.
-		
-	self setEditingModeFor: newWidget.
-	self model additionalKeyBindings ifNotNil: [ :bindings |
-		bindings keysAndValuesDo: [ :shortcut :action | 
-			newWidget bindKeyCombination: shortcut toAction: action ] ].
-	
+	self setEditingModeFor: newWidget withBehavior: self behavior.
 	^ newWidget
 ]
 
 { #category : #'spec protocol' }
 MorphicTextAdapter >> canChangeText [
 	^ self widget textArea canChangeText
+]
+
+{ #category : #'spec protocol' }
+MorphicTextAdapter >> classOrMetaClass: aClass [
+	self setEditingModeFor: self widget withBehavior: aClass
 ]
 
 { #category : #'undo-redo' }
@@ -106,13 +111,26 @@ MorphicTextAdapter >> clearUserEditFlag [
 
 { #category : #'widget API' }
 MorphicTextAdapter >> codePaneMenu: aMenu shifted: shifted [ 
-	| menuPresenter |
 
-	menuPresenter := self model contextMenu.
-	menuPresenter ifNil: [ ^ nil ].
-	^ SpecBindings
-		value: self model application adapterBindings
-		during: [ menuPresenter value buildWithSpec ]
+	^ self model codePaneMenu: aMenu shifted: shifted 
+]
+
+{ #category : #'widget API' }
+MorphicTextAdapter >> doItContext [
+
+	^ self model doItContext
+]
+
+{ #category : #'widget API' }
+MorphicTextAdapter >> doItReceiver [
+
+	^ self model doItReceiver
+]
+
+{ #category : #accessing }
+MorphicTextAdapter >> editingMode [ 
+
+	^ self widget editingMode
 ]
 
 { #category : #'widget API' }
@@ -138,17 +156,27 @@ MorphicTextAdapter >> hasUnacceptedEdits: aBoolean [
 	self model hasUnacceptedEdits: aBoolean
 ]
 
-{ #category : #testing }
-MorphicTextAdapter >> isCodeCompletionAllowed [
+{ #category : #'protocol-shout' }
+MorphicTextAdapter >> isAboutToStyle [
 
-	^ false
+	^ self model isAboutToStyle
+]
+
+{ #category : #'spec protocol' }
+MorphicTextAdapter >> isForSmalltalkCode [
+	^ self model isForSmalltalkCode
 ]
 
 { #category : #'spec protocol' }
 MorphicTextAdapter >> notify: errorMessage at: position in: sourceCode [
 
-	self flag: #TOMOVE.
 	self widgetDo: [ :w | w notify: errorMessage at: position in: sourceCode ]
+]
+
+{ #category : #'private-shout' }
+MorphicTextAdapter >> okToStyle [
+
+	^ true
 ]
 
 { #category : #'spec protocol' }
@@ -171,6 +199,12 @@ MorphicTextAdapter >> readSelection [
 	^ self model readSelection
 ]
 
+{ #category : #NOCompletion }
+MorphicTextAdapter >> receiverClass [
+
+	^ self behavior
+]
+
 { #category : #'widget API' }
 MorphicTextAdapter >> scrollValueChanged: aValue [
 
@@ -187,15 +221,34 @@ MorphicTextAdapter >> selectFrom: nodeStart to: nodeStop [
 	self widget selectFrom: nodeStart to: nodeStop
 ]
 
+{ #category : #'widget API' }
+MorphicTextAdapter >> selectedBehavior [
+
+	^ self model selectedBehavior
+]
+
+{ #category : #NOCompletion }
+MorphicTextAdapter >> selectedClassOrMetaClass [
+
+	^ self behavior
+]
+
 { #category : #'spec protocol' }
 MorphicTextAdapter >> selectionInterval [
 	^ self widget selectionInterval 
 ]
 
 { #category : #private }
-MorphicTextAdapter >> setEditingModeFor: textArea [
-	
-	textArea beForPlainText
+MorphicTextAdapter >> setEditingModeFor: textArea withBehavior: behavior [
+	behavior
+		ifNil:
+			[
+			self isForSmalltalkCode
+				ifTrue: [ textArea beForSmalltalkScripting ]
+				ifFalse: [ textArea beForPlainText ] ]
+		ifNotNil: [ :class | 
+			textArea
+				beForSmalltalkCodeInClass: class ]
 ]
 
 { #category : #'spec protocol' }
@@ -224,6 +277,12 @@ MorphicTextAdapter >> setSelection: interval [
 MorphicTextAdapter >> setSelectionFromModel: aSelection [
 
 	self widget ifNotNil: [:w | w setSelection: aSelection ]
+]
+
+{ #category : #'widget API' }
+MorphicTextAdapter >> shoutAboutToStyle: aMorph [
+	
+	^ self model isAboutToStyle
 ]
 
 { #category : #'widget API' }

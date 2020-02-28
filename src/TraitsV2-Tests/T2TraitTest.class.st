@@ -4,7 +4,7 @@ Unit test for trait handling
 Class {
 	#name : #T2TraitTest,
 	#superclass : #T2AbstractTest,
-	#category : #'TraitsV2-Tests-Tests'
+	#category : #'TraitsV2-Tests-Base'
 }
 
 { #category : #tests }
@@ -229,6 +229,20 @@ T2TraitTest >> testRemovingTraitsRemoveTraitedClassMethodsWithSubclasses [
 ]
 
 { #category : #tests }
+T2TraitTest >> testRemovingTraitsUpdatesCategories [
+	| t1 t2 c1 |
+	
+	t1 := self createT1.
+	t2 := self createT2.
+	c1 := self newClass: #C1 with: 'g h' asSlotCollection uses: t1 + t2.
+	c1 := self newClass: #C1 with: 'g h' asSlotCollection uses: {}.		
+
+	c1 organization allMethodSelectors do: [:each | self assert: (c1 includesSelector: each) ].
+	c1 class organization allMethodSelectors do: [:each | 
+		self assert: (c1 class includesSelector: each) ]
+]
+
+{ #category : #tests }
 T2TraitTest >> testSelectorsWithExplicitOrigin [
 	"Obtain the subset of selectors that are defined either locally or inherited from traits. But, exclude selectors of methods from implicit traits such as TraitedClass"
 	| t1 c1 |
@@ -274,6 +288,17 @@ T2TraitTest >> testSequence [
 ]
 
 { #category : #tests }
+T2TraitTest >> testSlotsAreNotDuplicated [
+	| t1 t2 c1 |
+	t1 :=  self newTrait: #T1 with: 'a' asSlotCollection.
+	t2 :=  self newTrait: #T2 with: '' asSlotCollection uses: t1.
+	c1 := self newClass: #C1 with: '' asSlotCollection uses: t1 + t2.
+
+	self assert: c1 traitComposition slots size equals: c1 traitComposition slots asSet size.
+	self assert: c1 traitComposition slots size equals: 1
+]
+
+{ #category : #tests }
 T2TraitTest >> testSubclasses [
 	| t1 t2 |
 		
@@ -302,5 +327,25 @@ T2TraitTest >> testTraitHaveUsersInstanceVariable [
 	
 	self assert: (aClass allSlots anySatisfy: [:e | e name = #users]).
 	self assert: (aClass slotNamed: #users) definingClass equals: t1
+
+]
+
+{ #category : #tests }
+T2TraitTest >> testUsingTraitInAnonymousSubClassAndRedefiningIt [
+	| t1 aClass |
+
+	t1 := self newTrait: #T1 with: #().
+
+	aClass := Smalltalk anonymousClassInstaller make: [ :builder |
+		builder superclass: Object.
+		builder traitComposition: t1.
+	].
+
+	self deny: (Object subclasses includes: aClass).
+	
+	t1 := self newTrait: #T1 with: #(aSlot).
+	self assert: (aClass hasSlotNamed: #aSlot).
+	
+	self deny: (Object subclasses includes: aClass).
 
 ]

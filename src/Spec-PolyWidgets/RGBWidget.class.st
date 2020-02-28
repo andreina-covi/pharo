@@ -33,6 +33,18 @@ RGBWidget class >> defaultSpec [
 		yourself
 ]
 
+{ #category : #example }
+RGBWidget class >> example [
+	<sampleInstance>
+	| example |
+	example := self new.
+	example
+		title: 'RGBWidget exampe';
+		extent: 300 @ 250;
+		openDialogWithSpec.
+	^ example
+]
+
 { #category : #api }
 RGBWidget >> color [
  ^ sliders color

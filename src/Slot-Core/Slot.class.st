@@ -66,6 +66,11 @@ Slot class >> initialize [
 		ifNotNil: [ (WeakIdentityKeyDictionary newFrom: Properties) rehash]
 ]
 
+{ #category : #testing }
+Slot class >> isUsed [
+	^super isUsed or: [self slotUsers isNotEmpty ]
+]
+
 { #category : #'instance creation' }
 Slot class >> named: aSymbol [
 	self checkValidName: aSymbol.
@@ -89,9 +94,17 @@ Slot class >> slotSetting: aBuilder [
 	<systemsettings>
 	(aBuilder setting: #showSlotClassDefinition) 
 		label: 'Class Template with Slots';
+		default: false;
 		description: 'If checked then browsers show always the slot class definition';
 		parent: #codeBrowsing; 
 		target: self
+]
+
+{ #category : #testing }
+Slot class >> slotUsers [
+	"all classes or traits that have slots of this kind"
+	^self environment allBehaviors 
+		select:  [ :class | class slots anySatisfy: [ :slot | slot class == self ] ]
 ]
 
 { #category : #comparing }
@@ -118,6 +131,13 @@ Slot >> addSlotInitToInitialize: aClass [
 	Author 
 		useAuthor: 'Generated' 
 		during: [ aClass compile: source classified: 'initialization' ]
+]
+
+{ #category : #'class building' }
+Slot >> asClassVariable [
+	self
+		error:
+			'Slots can not be used to define Class Variables, you need to create a LiteralVariable subclass instead'
 ]
 
 { #category : #converting }
@@ -151,13 +171,13 @@ Slot >> definitionString [
 Slot >> emitStore: aMethodBuilder [
 	"generate bytecode to call the reflective write method of the Slot"
 	| tempName |
-	tempName := Object new.  "we need a unique Object as a temp name"
+	tempName := '0slotTempForStackManipulation'.  
 	aMethodBuilder
 		addTemp: tempName;
 		storeTemp: tempName;
 		popTop;
 		pushReceiver;
-		pushLiteralVariable: #slot -> self;
+		pushLiteralVariable: (AdditionalBinding key: #slot value: self);
 		pushTemp: tempName;
 		send: #writeSlot:value:
 ]
@@ -165,7 +185,7 @@ Slot >> emitStore: aMethodBuilder [
 { #category : #'code generation' }
 Slot >> emitValue: aMethodBuilder [
 	aMethodBuilder
-		pushLiteralVariable: #slot -> self;
+		pushLiteralVariable: (AdditionalBinding key: #slot value: self);
 		pushReceiver;
 		send: #read:
 ]
@@ -185,7 +205,7 @@ Slot >> ensureProperties [
 ]
 
 { #category : #private }
-Slot >> ensureSlotIniatializationFor: aClass [
+Slot >> ensureSlotInitializationFor: aClass [
 	self ensureInitalizeMethodExists: aClass. 
 	self addSlotInitToInitialize: aClass.
 ]
@@ -228,7 +248,7 @@ Slot >> initialize: instance [
 { #category : #'class building' }
 Slot >> installingIn: aClass [
 	"I am called by the class builder. This way a Slot can change the class it is installed in"
-	self wantsInitalization ifTrue: [ self ensureSlotIniatializationFor: aClass ].
+	self wantsInitialization ifTrue: [ self ensureSlotInitializationFor: aClass ].
 ]
 
 { #category : #testing }
@@ -252,6 +272,11 @@ Slot >> isLocal [
 Slot >> isReadIn: aCompiledCode [
 	^aCompiledCode ast instanceVariableReadNodes
 		 anySatisfy: [ :node | node binding slot == self ]
+]
+
+{ #category : #testing }
+Slot >> isReferenced [
+	^self usingMethods isNotEmpty
 ]
 
 { #category : #testing }
@@ -424,7 +449,7 @@ Slot >> usingMethods [
 ]
 
 { #category : #'meta-object-protocol' }
-Slot >> wantsInitalization [
+Slot >> wantsInitialization [
 	"if a slot wants to enable instance initalization, return true here"
 	^false
 ]

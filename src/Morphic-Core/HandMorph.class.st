@@ -11,7 +11,6 @@ Class {
 		'keyboardFocus',
 		'eventListeners',
 		'mouseListeners',
-		'keyboardListeners',
 		'mouseClickState',
 		'mouseOverHandler',
 		'lastMouseEvent',
@@ -27,8 +26,6 @@ Class {
 		'lastEventBuffer',
 		'lastKeyScanCode',
 		'combinedChar',
-		'eventSource',
-		'lastSystemEvent',
 		'captureBlock',
 		'recentModifiers'
 	],
@@ -130,6 +127,7 @@ HandMorph class >> settingsOn: aBuilder [
 		parent: #pharoSystem;
 		label: 'HandMorph event statistics';
 		target: self;
+		default: false;
 		selector: #logEventStatsEnabled;
 		description: 'Enable/disable gathering global statistics of events handled by HandMorphs.
 "HandMorph eventStats inspect"'
@@ -141,7 +139,7 @@ HandMorph class >> showEvents: aBool [
 	"HandMorph showEvents: true"
 	"HandMorph showEvents: false"
 	ShowEvents := aBool.
-	aBool ifFalse: [ World invalidRect: (0@0 extent: 500@120) ].
+	aBool ifFalse: [ self currentWorld invalidRect: (0@0 extent: 500@120) ].
 ]
 
 { #category : #accessing }
@@ -277,6 +275,20 @@ HandMorph >> copyToPasteBuffer: aMorph [
 
 ]
 
+{ #category : #cursor }
+HandMorph >> currentCursor [
+
+	^ ActiveHand world currentCursor
+]
+
+{ #category : #cursor }
+HandMorph >> currentCursor: aCursor [
+
+	ActiveHand world currentCursor: aCursor.
+		ActiveHand world isCursorOwner ifTrue: [
+			aCursor activateInCursorOwner: ActiveHand world ]
+]
+
 { #category : #accessing }
 HandMorph >> cursorBounds [
 
@@ -292,8 +304,8 @@ HandMorph >> cursorPoint [
 
 	| pos |
 	pos := self position.
-	(ActiveWorld isNil or: [ActiveWorld == owner]) ifTrue: [^pos].
-	^ActiveWorld point: pos from: owner
+	(self currentWorld isNil or: [self currentWorld == owner]) ifTrue: [^pos].
+	^self currentWorld point: pos from: owner
 ]
 
 { #category : #'balloon help' }
@@ -597,7 +609,7 @@ HandMorph >> grabMorph: aMorph [
 	"Grab the given morph (i.e., add it to this hand and remove it from its current owner) without changing its position. This is used to pick up a morph under the hand's current position, versus attachMorph: which is used to pick up a morph that may not be near this hand."
 	
 	| grabbed |
-	aMorph = World ifTrue: [^ self].
+	aMorph = self currentWorld ifTrue: [^ self].
 	self releaseMouseFocus.
 	grabbed := aMorph aboutToBeGrabbedBy: self.
 	grabbed ifNil: [^self].
@@ -750,13 +762,10 @@ HandMorph >> initForEvents [
 HandMorph >> initialize [
 	super initialize.
 	self initForEvents.
-	keyboardFocus := nil.
-	mouseFocus := nil.
-	bounds := 0@0 extent: Cursor normal extent.
+	bounds := 0 @ 0 extent: Cursor normal extent.
 	damageRecorder := DamageRecorder new.
 	cachedCanvasHasHoles := false.
-	temporaryCursor := temporaryCursorOffset := nil.
-	self initForEvents.
+	self initForEvents
 ]
 
 { #category : #initialization }
@@ -863,7 +872,7 @@ HandMorph >> moveToEvent: anEvent [
 
 { #category : #drawing }
 HandMorph >> needsToBeDrawn [
-	"Return true if this hand must be drawn explicitely instead of being drawn via the hardware cursor. This is the case if it (a) it is a remote hand, (b) it is showing a temporary cursor, or (c) it is not empty and there are any visible submorphs. If using the software cursor, ensure that the hardware cursor is hidden."
+	"Return true if this hand must be drawn explicitly instead of being drawn via the hardware cursor. This is the case if it (a) it is a remote hand, (b) it is showing a temporary cursor, or (c) it is not empty and there are any visible submorphs. If using the software cursor, ensure that the hardware cursor is hidden."
 	"Details:  Return true if this hand has a saved patch to ensure that is is processed by the world. This saved patch will be deleted after one final display pass when it becomes possible to start using the hardware cursor again. This trick gives us one last display cycle to allow us to remove the software cursor and shadow from the display."
 	| cursor |
 	(savedPatch notNil
@@ -987,7 +996,10 @@ HandMorph >> position [
 
 	^temporaryCursor
 		ifNil: [bounds topLeft]
-		ifNotNil: [bounds topLeft - temporaryCursorOffset]
+		ifNotNil: [
+			temporaryCursorOffset 
+				ifNil: [ bounds topLeft ]
+				ifNotNil: [ :anOffset | bounds topLeft - anOffset ] ]
 ]
 
 { #category : #geometry }
@@ -1020,51 +1032,47 @@ HandMorph >> processEvents [
 
 { #category : #'private events' }
 HandMorph >> processEventsFromQueue: anEventQueue [
+
 	"Process user input events from the local input devices."
 
 	| evt evtBuf type hadAny |
-	ActiveEvent ifNotNil: 
-			["Meaning that we were invoked from within an event response.
-		Make sure z-order is up to date"
 
-			self mouseOverHandler processMouseOver: lastMouseEvent].
+	ActiveEvent
+		ifNotNil: [ "Meaning that we were invoked from within an event response.
+		Make sure z-order is up to date" self mouseOverHandler processMouseOver: lastMouseEvent ].
 	hadAny := false.
-	[anEventQueue isNotNil and: [(evtBuf := anEventQueue nextEvent) isNotNil]] whileTrue: 
-			[evt := nil.	"for unknown event types"
+	[ anEventQueue isNotNil and: [ ( evtBuf := anEventQueue nextEvent ) isNotNil ] ]
+		whileTrue: [ evt := nil.	"for unknown event types"
 			type := evtBuf first.
-			type = EventTypeMouse ifTrue: [
-				self world beCursorOwner.
-				recentModifiers := evtBuf sixth.
-				evt := self generateMouseEvent: evtBuf
-			].
-			type = EventTypeKeyboard 
-				ifTrue: [recentModifiers := evtBuf fifth. evt := self generateKeyboardEvent: evtBuf].
-			type = EventTypeDragDropFiles 
-				ifTrue: [evt := self generateDropFilesEvent: evtBuf].
+			type = EventTypeMouse
+				ifTrue: [ self world beCursorOwner.
+					recentModifiers := evtBuf sixth.
+					evt := self generateMouseEvent: evtBuf
+					].
+			type = EventTypeKeyboard
+				ifTrue: [ recentModifiers := evtBuf fifth.
+					evt := self generateKeyboardEvent: evtBuf
+					].
+			type = EventTypeDragDropFiles
+				ifTrue: [ evt := self generateDropFilesEvent: evtBuf ].
 			type = EventTypeWindow
-				ifTrue:[evt := self generateWindowEvent: evtBuf].				
-			"All other events are ignored"
-			(type ~= EventTypeDragDropFiles and: [evt isNil]) ifTrue: [^self].
-			evt isNil 
-				ifFalse: 
-					["Finally, handle it"
-
+				ifTrue: [ evt := self generateWindowEvent: evtBuf ].	"All other events are ignored"
+			( type ~= EventTypeDragDropFiles and: [ evt isNil ] )
+				ifTrue: [ ^ self ].
+			evt
+				ifNotNil: [ "Finally, handle it"
 					self handleEvent: evt.
-					hadAny := true.
-
-					"For better user feedback, return immediately after a mouse event has been processed."
-					(evt isMouse and: [evt isMouseWheel not]) ifTrue: [^self]]].
-	"note: if we come here we didn't have any mouse events"
-	mouseClickState notNil 
-		ifTrue: 
-			["No mouse events during this cycle. Make sure click states time out accordingly"
-
-			mouseClickState handleEvent: lastMouseEvent asMouseMove from: self].
-	hadAny 
-		ifFalse: 
-			["No pending events. Make sure z-order is up to date"
-
-			self mouseOverHandler processMouseOver: lastMouseEvent]
+					hadAny := true.	"For better user feedback, return immediately after a mouse event has been processed."
+					( evt isMouse and: [ evt isMouseWheel not ] )
+						ifTrue: [ ^ self ]
+					]
+			].	"note: if we come here we didn't have any mouse events"
+	mouseClickState notNil
+		ifTrue:
+			[ "No mouse events during this cycle. Make sure click states time out accordingly" mouseClickState handleEvent: lastMouseEvent asMouseMove from: self ].
+	hadAny
+		ifFalse:
+			[ "No pending events. Make sure z-order is up to date" self mouseOverHandler processMouseOver: lastMouseEvent ]
 ]
 
 { #category : #'focus handling' }

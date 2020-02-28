@@ -1116,6 +1116,12 @@ Morph >> asMorph [
 ]
 
 { #category : #converting }
+Morph >> asReadOnlyMorph [
+
+	^ self
+]
+
+{ #category : #converting }
 Morph >> asText [
 
 	| anchor embedMorphSignal |
@@ -2188,7 +2194,7 @@ Morph >> displayExtentChanged [
 { #category : #settings }
 Morph >> displayScaleFactor [
 
-	^ World displayScaleFactor
+	^ self currentWorld displayScaleFactor
 ]
 
 { #category : #announcements }
@@ -3512,11 +3518,11 @@ Morph >> initialExtent [
 { #category : #initialization }
 Morph >> initialize [
 	"initialize the state of the receiver"
+
 	super initialize.
-	owner := nil.
 	submorphs := EmptyArray.
 	bounds := self defaultBounds.
-	color := self defaultColor.
+	color := self defaultColor
 ]
 
 { #category : #'accessing - extension' }
@@ -4579,7 +4585,7 @@ Morph >> outermostOwnerWithYellowButtonMenu [
 { #category : #structure }
 Morph >> outermostWorldMorph [
 
-	^self world ifNil: [ World ].
+	^self world ifNil: [ self currentWorld ].
 ]
 
 { #category : #geometry }
@@ -4770,14 +4776,14 @@ Morph >> preferredDuplicationHandleSelector [
 { #category : #'event handling' }
 Morph >> preferredKeyboardBounds [
 
-	^ self bounds: self bounds in: World.
+	^ self bounds: self bounds in: self currentWorld.
 
 ]
 
 { #category : #'event handling' }
 Morph >> preferredKeyboardPosition [
 
-	^ (self bounds: self bounds in: World) topLeft.
+	^ (self bounds: self bounds in: self currentWorld) topLeft.
 
 ]
 

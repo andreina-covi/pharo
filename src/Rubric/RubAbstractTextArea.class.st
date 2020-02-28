@@ -94,7 +94,8 @@ Class {
 		'getMenuPolicy',
 		'mouseDownPoint',
 		'completionEngine',
-		'maxLength'
+		'maxLength',
+		'findReplaceService'
 	],
 	#classVars : [
 		'BackgroundColor',
@@ -105,6 +106,9 @@ Class {
 		'LineNumbersFont',
 		'LineNumbersTextColor',
 		'WalkAlongDisplayedLine'
+	],
+	#classInstVars : [
+		'defaultFindReplaceServiceClass'
 	],
 	#category : #'Rubric-Editing-Core'
 }
@@ -127,6 +131,18 @@ RubAbstractTextArea class >> caseSensitiveFinds [
 { #category : #settings }
 RubAbstractTextArea class >> caseSensitiveFinds: aBoolean [
 	CaseSensitiveFinds := aBoolean
+]
+
+{ #category : #accessing }
+RubAbstractTextArea class >> defaultFindReplaceServiceClass [
+
+	^ defaultFindReplaceServiceClass ifNil: [ RubFindReplaceService ]
+]
+
+{ #category : #accessing }
+RubAbstractTextArea class >> defaultFindReplaceServiceClass: aClass [
+
+	^ defaultFindReplaceServiceClass := aClass
 ]
 
 { #category : #settings }
@@ -333,11 +349,13 @@ RubAbstractTextArea class >> rubricSettingsOn: aBuilder [
 		parent: #codeEditing;
 		with: [ (aBuilder setting: #backgroundColor)
 				target: self;
+				default: Color white;
 				description: 'The default editor background color';
 				label: 'Background'.
 			(aBuilder setting: #textColor)
 				target: self;
 				description: 'The default editor text color';
+				default: Color black;
 				label: 'Text color'.
 			(aBuilder group: #LineNumbers)
 				target: self;
@@ -345,18 +363,22 @@ RubAbstractTextArea class >> rubricSettingsOn: aBuilder [
 				description: 'line numbers settings';
 				with: [ (aBuilder setting: #lineNumbersFont)
 						target: self;
+						default: (TextStyle default fontOfPointSize: 7);
 						description: 'Font used for line numbers';
 						label: 'Line numbers font'.
 					(aBuilder setting: #lineNumbersTextColor)
 						target: self;
+						default: Color veryDarkGray;
 						description: 'Color used for line numbers';
 						label: 'Line numbers color'.
 					(aBuilder setting: #lineNumbersBackgroundColor)
 						target: self;
+						default: (Color r: 0.9198435972629521 g: 0.9198435972629521 b: 0.9198435972629521 alpha: 1.0);
 						description: 'Color used for line numbers background';
 						label: 'Line numbers background color' ].
 			(aBuilder setting: #highlightMessageSend)
 				target: self;
+				default: true;
 				description: 'In a Smalltalk text editor, highlight message sends on mouse over with shift key pressed.';
 				label: 'Highlight Message Send' ]
 ]
@@ -548,7 +570,7 @@ RubAbstractTextArea >> completionEngine [
 RubAbstractTextArea >> completionPostAction [
 	
 	self hasCompletionEngine 
-		ifTrue: [ completionEngine uniqueInstance closeMenu ]
+		ifTrue: [ completionEngine closeMenu ]
 
 ]
 
@@ -556,7 +578,8 @@ RubAbstractTextArea >> completionPostAction [
 RubAbstractTextArea >> compose [
 
 	self prepareParagraphToCompose.
-	self paragraph compose 
+	self paragraph compose.
+	self markBackgroundColors
 ]
 
 { #category : #composing }
@@ -610,6 +633,12 @@ RubAbstractTextArea >> defaultColor [
 
   	^ self class backgroundColor
 
+]
+
+{ #category : #'event handling' }
+RubAbstractTextArea >> defaultFindReplaceServiceClass [
+
+	^ self class defaultFindReplaceServiceClass
 ]
 
 { #category : #menu }
@@ -808,6 +837,12 @@ RubAbstractTextArea >> findNextString: aSubstring startingAt: searchIdx [
 { #category : #'find-replace' }
 RubAbstractTextArea >> findRegex [
 	^ self editor findRegex
+]
+
+{ #category : #'event handling' }
+RubAbstractTextArea >> findReplaceService [
+	^ findReplaceService ifNil: [
+		findReplaceService := self defaultFindReplaceServiceClass newFor: self].
 ]
 
 { #category : #'find-replace' }
@@ -1022,7 +1057,7 @@ RubAbstractTextArea >> hasDecoratorNamed: aKey [
 
 { #category : #'find-replace' }
 RubAbstractTextArea >> hasFindReplaceFocus [
-	^ RubFindReplaceService default dialogIsActiveFor: self
+	^ self findReplaceService dialogIsActiveFor: self
 ]
 
 { #category : #'accessing editing state' }
@@ -1164,6 +1199,21 @@ RubAbstractTextArea >> margins: aMargin [
 				bottom: m bottom
 				right: self cursorWidth ].
 	margins := m
+]
+
+{ #category : #composing }
+RubAbstractTextArea >> markBackgroundColors [
+	"Scan through text to find spans of TextBackgroundColor, and mark them using TextBackgroundColorSegmentMorph."
+
+	self text runs
+		withStartStopAndValueDo: [ :start :stop :value | 
+			value do: [ :v | 
+					(v isKindOf: TextBackgroundColor)
+						ifTrue: [ self addSegment: 
+							(RubTextBackgroundColorSegmentMorph
+								color: v color
+								from: start
+								to: stop+1) ] ] ] 
 ]
 
 { #category : #'accessing selection' }
@@ -1425,6 +1475,7 @@ RubAbstractTextArea >> paragraphReplacedTextFrom: start to: stop with: aText [
 				ifFalse: [ self updateExtentFromParagraph ] ].
 	self scrollPane ifNotNil: [ :sp | sp textChanged ].
 	self announce: (RubTextChanged from: start to: stop with: aText).
+	self markBackgroundColors .
 
 ]
 
@@ -1440,9 +1491,9 @@ RubAbstractTextArea >> paragraphWasComposedFrom: startIndex to: stopIndex [
 { #category : #initialization }
 RubAbstractTextArea >> plugFindReplace [
 	self announcer 
-		when:  MorphGotFocus send: #whenTextAreaGotFocus: to: RubFindReplaceService default;
-	 	when:  MorphLostFocus send: #whenTextAreaLostFocus: to: RubFindReplaceService default;	
-		when:  RubSelectionChanged send: #whenTextAreaSelectionChanged: to: RubFindReplaceService default
+		when:  MorphGotFocus send: #whenTextAreaGotFocus: to: self findReplaceService;
+	 	when:  MorphLostFocus send: #whenTextAreaLostFocus: to: self findReplaceService;	
+		when:  RubSelectionChanged send: #whenTextAreaSelectionChanged: to: self findReplaceService
 ]
 
 { #category : #'accessing selection' }
@@ -1774,15 +1825,15 @@ RubAbstractTextArea >> sharesFindReplace [
 
 { #category : #'event handling' }
 RubAbstractTextArea >> showOverEditableTextCursor [
-	| o |
-	owner isNil
-		ifTrue: [^ self].
-	o := owner isWorldMorph 
-		ifTrue: [self] 
-		ifFalse: [owner].
-	(o boundsInWorld containsPoint: self currentHand position)
-		ifTrue: [self currentHand showTemporaryCursor: (self theme overTextCursorFor: self)]
 
+	| o |
+
+	owner ifNil: [ ^ self ].
+	o := owner isWorldMorph
+		ifTrue: [ self ]
+		ifFalse: [ owner ].
+	( o boundsInWorld containsPoint: self currentHand position )
+		ifTrue: [ self currentHand showTemporaryCursor: ( self theme overTextCursorFor: self ) ]
 ]
 
 { #category : #'accessing selection' }
@@ -1915,7 +1966,7 @@ RubAbstractTextArea >> unplug [
 
 { #category : #initialization }
 RubAbstractTextArea >> unplugFindReplace [
-	self announcer unsubscribe: RubFindReplaceService default
+	self announcer unsubscribe: self findReplaceService
 
 ]
 

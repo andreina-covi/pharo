@@ -127,13 +127,14 @@ Object class >> howToModifyPrimitives [
 { #category : #'class initialization' }
 Object class >> initialize [
 	"Object initialize"
-	DependentsFields ifNil:[self initializeDependentsFields].
+	DependentsFields ifNil:[ self initializeDependentsFields ]
 ]
 
 { #category : #'class initialization' }
 Object class >> initializeDependentsFields [
-	"Object initialize"
-	DependentsFields := WeakIdentityKeyDictionary new.
+	<script: 'Object initialize'>
+	
+	DependentsFields := WeakIdentityKeyDictionary new
 
 ]
 
@@ -148,13 +149,13 @@ Object class >> newFrom: aSimilarObject [
 
 { #category : #'class initialization' }
 Object class >> reInitializeDependentsFields [
-	"Object reInitializeDependentsFields"
+	<script>
+
 	| oldFields |
 	oldFields := DependentsFields.
 	DependentsFields := WeakIdentityKeyDictionary new.
-	oldFields keysAndValuesDo:[:obj :deps|
-		deps do:[:d| obj addDependent: d]].
-
+	oldFields
+		keysAndValuesDo: [ :obj :deps | deps do: [ :d | obj addDependent: d ] ]
 ]
 
 { #category : #'instance creation' }
@@ -241,13 +242,13 @@ Object >> -> anObject [
 	"Answer an Association between self and anObject"
 	"the code of Association>>#key:value: is inline here for speed"
 	"The following example creates an association whose key is number 1 and value string 'one'."
-	"(1 -> 'one') >>> 1 -> 'one'"
+
 	"(1 -> 'one') key >>> 1"
 	"(1 -> 'one') value >>> 'one'"
 	
 	"Note that key and value can be ANY object."
 	
-	^Association basicNew key: self value: anObject
+	^Association key: self value: anObject
 ]
 
 { #category : #comparing }
@@ -328,6 +329,14 @@ Object >> as: aSimilarClass [
 ]
 
 { #category : #converting }
+Object >> asCollectionElement [
+	"Answer an object, which can be put into a Set as element , wrapped
+	by one of SetElement instance, if necessary. 
+	Default implementation is to answer self"
+
+]
+
+{ #category : #converting }
 Object >> asLink [
 	"Answer a string that represents the receiver."
 
@@ -339,14 +348,6 @@ Object >> asOrderedCollection [
 	"Answer an OrderedCollection with the receiver as its only element."
 
 	^ OrderedCollection with: self
-]
-
-{ #category : #converting }
-Object >> asSetElement [
-	"Answer an object, which can be put into a Set as element , wrapped
-	by one of SetElement instance, if necessary. 
-	Default implementation is to answer self"
-
 ]
 
 { #category : #converting }
@@ -495,24 +496,6 @@ Object >> beWritableObject [
 	 primitive to fail with a #'no modification' error code.
 	 Set the read-only flag of the receiver to false and answer the previous vaue of the flag."
 	^self setIsReadOnlyObject: false
-]
-
-{ #category : #'reflective operations' }
-Object >> becomeForward: otherObject [ 
-	"Primitive. All variables in the entire system that used to point
-	to the receiver now point to the argument.
-	Fails if either argument is a SmallInteger."
-
-	{self} elementsForwardIdentityTo: {otherObject}
-]
-
-{ #category : #'reflective operations' }
-Object >> becomeForward: otherObject copyHash: copyHash [
-	"Primitive. All variables in the entire system that used to point to the receiver now point to the argument.
-	If copyHash is true, the argument's identity hash bits will be set to those of the receiver.
-	Fails if either argument is a SmallInteger."
-
-	{self} elementsForwardIdentityTo: {otherObject} copyHash: copyHash
 ]
 
 { #category : #binding }
@@ -675,30 +658,6 @@ Object >> copySameFrom: otherObject [
 
 ]
 
-{ #category : #'logging-Deprecated' }
-Object >> crLog [
-      self crTrace: self printString
-]
-
-{ #category : #'logging-Deprecated' }
-Object >> crLog: aString [
-	"Log the argument. Use self log: instead of Transcript cr; show: "
-	
-	Transcript cr; show: aString.
-]
-
-{ #category : #tracing }
-Object >> crTrace [
-      self crTrace: self printString
-]
-
-{ #category : #tracing }
-Object >> crTrace: aString [
-	"Log the argument. Use self crTrace: instead of Transcript cr; show: "
-	
-	Transcript cr; show: aString.
-]
-
 { #category : #copying }
 Object >> deepCopy [
 	"Answer a copy of the receiver with its own copy of each instance variable. deepCopy does a deep copy. It should never be overridden and only be used if you want to get these very specific semantics.
@@ -850,7 +809,7 @@ Object >> doesNotUnderstand: aMessage [
 ]
 
 { #category : #accessing }
-Object >> enclosedSetElement [
+Object >> enclosedElement [
 	"The receiver is included into a set as an element. 
 	Since some objects require wrappers (see SetElement) to be able to be included into a Set,
 	a set sends this message to its element to make sure it getting real object,
@@ -918,21 +877,20 @@ Object >> explicitRequirement [
 	originalMethod := callingContext method.
 	originalMethod isFromTrait
 		ifFalse: errorBlock.
-		
 	originalReceiver := callingContext receiver.
 	originalSelector := originalMethod selector.
 	originalArguments := callingContext arguments.
-	
 	originalReceiver class superclass
 		withAllSuperclassesDo: [ :superClass | 
 			superClass
 				compiledMethodAt: originalSelector
 				ifPresent: [ :method | 
 					(method isProvided or: [ method isFromTrait not ])
-						ifTrue: [ 
-							callingContext return: (method valueWithReceiver: originalReceiver arguments: originalArguments) ] ]
-				ifAbsent: [  ] ].
-
+						ifTrue: [ callingContext
+								return:
+									(method
+										valueWithReceiver: originalReceiver
+										arguments: originalArguments) ] ] ].
 	errorBlock value
 ]
 
@@ -1094,16 +1052,24 @@ Object >> instVarAt: index put: anObject [
 
 { #category : #introspection }
 Object >> instVarNamed: aString [
-	"Return the value of the instance variable in me with that name.  Slow and unclean, but very useful. "
+	"Return the value of the instance variable in me with that name.  Slow, but very useful.
+	We support here all slots (even non indexed) but raise a backward compatible exception"
 
-	^ self instVarAt: (self class instVarIndexFor: aString asString ifAbsent: [ InstanceVariableNotFound signalFor: aString asString ])
+	^ self class
+		slotNamed: aString
+		ifFound: [ :slot | slot read: self ]
+		ifNone: [ InstanceVariableNotFound signalFor: aString asString ]
 ]
 
 { #category : #introspection }
 Object >> instVarNamed: aString put: aValue [
-	"Store into the value of the instance variable in me of that name. Slow and unclean, but very useful. "
+	"Store into the value of the instance variable in me of that name. Slow, but very useful.
+	We support here all slots (even non indexed) but raise a backward compatible exception"
 
-	^ self instVarAt: (self class instVarIndexFor: aString asString ifAbsent: [ InstanceVariableNotFound signalFor: aString asString ]) put: aValue
+	^ self class
+		slotNamed: aString
+		ifFound: [ :slot | slot write: aValue to: self ]
+		ifNone: [ InstanceVariableNotFound signalFor: aString asString ]
 ]
 
 { #category : #testing }
@@ -1219,12 +1185,11 @@ Object >> isInterval [
 ]
 
 { #category : #'class membership' }
-Object >> isKindOf: aClass [ 
-	"Answer whether the class, aClass, is a superclass or class of the receiver."
+Object >> isKindOf: aClass [
+	"Answer whether the class, aClass, is a superclass or class of the receiver.
+	The current implemementation allows for a Trait to be used as argument"
 
-	self class == aClass
-		ifTrue: [^true]
-		ifFalse: [^self class inheritsFrom: aClass]
+	^ self class == aClass or: [ self class inheritsFrom: aClass ]
 ]
 
 { #category : #testing }
@@ -1384,53 +1349,6 @@ Object >> literalEqual: other [
 	^ self class == other class and: [self = other]
 ]
 
-{ #category : #'logging-Deprecated' }
-Object >> log: aString [
-	"Log the argument. Use self log: instead of Transcript show: "
-	
-	Transcript show: aString.
-]
-
-{ #category : #'logging-Deprecated' }
-Object >> logCr [
-      self logCr: self printString
-]
-
-{ #category : #'logging-Deprecated' }
-Object >> logCr: aString [
-	"Log the argument. Use self logCr: 'something' instead of Transcript show: 'something'  ; cr "
-	
-	Transcript show: aString ; cr
-]
-
-{ #category : #'logging-Deprecated' }
-Object >> logCrTab: aString [
-	"Log the argument. Use self logCr: 'something' instead of Transcript show: 'something'  ; cr ; tab"
-	
-	Transcript show: aString ; cr ; tab
-]
-
-{ #category : #flagging }
-Object >> logEntry [
-
-	Transcript show: 'Entered ', thisContext sender printString; cr.
-
-]
-
-{ #category : #flagging }
-Object >> logExecution [
-
-	Transcript show: 'Executing ', thisContext sender printString; cr.
-
-]
-
-{ #category : #flagging }
-Object >> logExit [
-
-	Transcript show:  'Exited ', thisContext sender printString; cr.
-
-]
-
 { #category : #printing }
 Object >> longPrintOn: aStream [
 	"Append to the argument, aStream, the names and values of all 
@@ -1480,42 +1398,6 @@ Object >> longPrintStringLimitedTo: aLimitValue [
 	str := String streamContents: [:aStream | self longPrintOn: aStream limitedTo: aLimitValue indent: 0].
 	"Objects without inst vars should return something"
 	^ str isEmpty ifTrue: [self printString, String cr] ifFalse: [str]
-]
-
-{ #category : #'block support' }
-Object >> mustBeBoolean [
-	"Catches attempts to test truth of non-Booleans.  This message is sent from the VM.  The sending context is rewound to just before the jump causing this exception."
-	^ Boolean mustBeBooleanDeOptimize
-		ifTrue: [ self mustBeBooleanDeOptimizeIn: thisContext sender  ]
-		ifFalse: [ self mustBeBooleanIn: thisContext sender ]
-]
-
-{ #category : #'block support' }
-Object >> mustBeBooleanIn: context [
-	"context is the where the non-boolean error occurred. Rewind context to before jump then raise error."
-	
-	"Some constructs are optimized in the compiler :
-	#whileTrue:
-	#whileFalse:
-	#ifTrue:
-	#ifFalse:
-	#ifTrue:ifFalse:
-	#ifFalse:ifTrue:
-	So you cannot by default use them on non boolean objects."
-	
-	"If you really need to use optimized constructs, you can enable Opal compiler and do one of the following :
-		- recompile your method with the pragma : <compilerOptions: #(+ optIlineNone)>
-		- recompile your class with the method : MyClass class>>compiler 
-			^ super compiler options: #(+ optIlineNone)
-		- enable the option mustBeBooleanDeOptimize to call mustBeBooleanDeOptimizeIn: instead of this method "
-
-	| proceedValue |
-	
-	context skipBackBeforeJump.
-	proceedValue := NonBooleanReceiver new
-		object: self;
-		signal: 'proceed for truth.'.
-	^ proceedValue ~~ false
 ]
 
 { #category : #dependencies }
@@ -1668,15 +1550,15 @@ Object >> perform: selector withArguments: argArray inSuperclass: lookupClass [
 	but with the supplied superclass instead.  It will fail if lookupClass
 	cannot be found among the receiver's superclasses.
 	Primitive. Essential. See Object documentation whatIsAPrimitive."
-	
+
 	<reflective: #object:performMessageInSuperclass:>
 	<primitive: 100>
-	(selector isSymbol)
-		ifFalse: [^ self error: 'selector argument must be a Symbol'].
-	(selector numArgs = argArray size)
-		ifFalse: [^ self error: 'incorrect number of arguments'].
-	(self class == lookupClass or: [self class inheritsFrom: lookupClass])
-		ifFalse: [^ self error: 'lookupClass is not in my inheritance chain'].
+	selector isSymbol
+		ifFalse: [ ^ self error: 'selector argument must be a Symbol' ].
+	selector numArgs = argArray size
+		ifFalse: [ ^ self error: 'incorrect number of arguments' ].
+	(self class includesBehavior: lookupClass)
+		ifFalse: [ ^ self error: 'lookupClass is not in my inheritance chain' ].
 	self primitiveFailed
 ]
 
@@ -1805,7 +1687,12 @@ Object >> readSlot: aSlot [
 
 { #category : #introspection }
 Object >> readSlotNamed: aName [
-	^self readSlot: (self class slotNamed: aName)
+	^(self class slotNamed: aName) read: self
+]
+
+{ #category : #testing }
+Object >> refersToLiteral: aLitteral [
+	^ self literalEqual: aLitteral
 ]
 
 { #category : #dependencies }
@@ -1876,8 +1763,9 @@ Object >> setPinned: aBoolean [
 { #category : #pinning }
 Object >> setPinnedInMemory: aBoolean [
 	"The VM's garbage collector routinely moves objects as it reclaims and compacts
-	 memory. But it can also pin an object so that it will not be moved, which can make
-	 it easier to pass objects out through the FFI.  Objects are unpinnned when created.
+	 memory. But it can also pin an object so that it will not be moved around in memory,
+    while still being reclamable by the garbage collector. This can make
+	 it easier to pass objects out through the FFI. Objects are unpinnned when created.
 	 This primitive either pins or unpins an object, and answers if it was already pinned."
 	<primitive: 184 error: ec>
 	^self primitiveFailed
@@ -1968,25 +1856,25 @@ Object >> species [
 	^self class
 ]
 
-{ #category : #'model - stepping' }
+{ #category : #stepping }
 Object >> stepAt: millisecondClockValue in: aWindow [
 
 	^ self stepIn: aWindow
 ]
 
-{ #category : #'model - stepping' }
+{ #category : #stepping }
 Object >> stepIn: aWindow [
 
 	^ self step
 ]
 
-{ #category : #'model - stepping' }
+{ #category : #stepping }
 Object >> stepTime [
 	
 	^ 1000 "milliseconds -- default backstop for objects serving as models of system windows"
 ]
 
-{ #category : #'model - stepping' }
+{ #category : #stepping }
 Object >> stepTimeIn: aSystemWindow [
 	
 	^ 1000 "milliseconds -- default backstop for objects serving as models of system windows"
@@ -2056,30 +1944,6 @@ Object >> toFinalizeSend: aSelector to: aFinalizer with: aResourceHandle [
 			receiver: aFinalizer
 			selector: aSelector
 			argument: aResourceHandle)
-]
-
-{ #category : #tracing }
-Object >> trace [
-      self trace: self printString
-]
-
-{ #category : #tracing }
-Object >> trace: aString [
-	"Log the argument. Use self trace: instead of Transcript show: "
-	
-	Transcript show: aString.
-]
-
-{ #category : #tracing }
-Object >> traceCr [
-      self traceCr: self printString
-]
-
-{ #category : #tracing }
-Object >> traceCr: aString [
-	"Log the argument. Use self traceCr: 'something' instead of Transcript show: 'something'  ; cr "
-	
-	Transcript show: aString ; cr
 ]
 
 { #category : #'error handling' }
@@ -2212,7 +2076,7 @@ Object >> veryDeepInner: deepCopier [
 	"avoid to use me we will deprecate it in the future"
 ]
 
-{ #category : #'model - stepping' }
+{ #category : #stepping }
 Object >> wantsSteps [
 	"Overridden by morphic classes whose instances want to be stepped,
 	or by model classes who want their morphic views to be stepped."
@@ -2220,7 +2084,7 @@ Object >> wantsSteps [
 	^ false
 ]
 
-{ #category : #'model - stepping' }
+{ #category : #stepping }
 Object >> wantsStepsIn: aSystemWindow [
 	
 	^ self wantsSteps
@@ -2273,4 +2137,30 @@ Object >> ~= anObject [
 	same object."
 
 	^self = anObject == false
+]
+
+{ #category : #associating }
+Object >> ~~> aValueLinkOrNil [
+	"Answer a ValueLink between self and aValueLinkOrNil.
+	This message allows the receiver to be inserted in a chain of objects, terminated by nil."
+
+	"Code of ValueLink>>#nextLink: and ValueLink>>#value: are inline here for speed."
+
+	"
+	1 ~~> nil
+	>>> ValueLink new value: 1; yourself
+
+	(1 ~~> 'one') value
+	>>> 1
+
+	(1 ~~> nil) nextLink
+	>>> nil
+	
+	Note that `value` can be ANY object; on the other hand, `nextLink` should be either another 
+	ValueLink object or nil."
+
+	^ ValueLink basicNew
+		value: self;
+		nextLink: aValueLinkOrNil;
+		yourself
 ]

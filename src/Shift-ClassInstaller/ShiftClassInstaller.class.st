@@ -76,15 +76,16 @@ ShiftClassInstaller >> copyClassSlotsFromExistingClass [
 ShiftClassInstaller >> copyObject: oldObject to: newClass [
 	| newObject hiddenSlots |
 	
-	newObject := newClass isVariable
+	newObject := (newClass isVariable and: [oldClass isVariable])
 		ifTrue: [ newClass basicNew: oldObject size ]
 		ifFalse: [ newClass basicNew ].
 
 	"first initalize all hidden slots"
 	hiddenSlots := newClass classLayout allSlots reject: [:each | each isVisible].
-	hiddenSlots do: [ :newSlot | oldObject class slotNamed: newSlot name ifFound: [ :oldSlot | 
+	hiddenSlots do: [ :newSlot | 
 			newSlot initialize: newObject.
-			newSlot write: (oldSlot read: oldObject) to: newObject ]  ].
+			oldObject class slotNamed: newSlot name ifFound: [ :oldSlot | 
+				newSlot write: (oldSlot read: oldObject) to: newObject ]  ].
 
 	"the initalize all visible slots"
 	newClass allSlots do: [ :newSlot | oldObject class slotNamed: newSlot name ifFound: [ :oldSlot | 
@@ -116,13 +117,17 @@ ShiftClassInstaller >> fixSlotScope: newClass [
 ShiftClassInstaller >> initialize [
 	super initialize.
 	builder := ShiftClassBuilder new.
-	builder buildEnvironment: ShSmalltalkGlobalsEnvironment new.	
+	builder buildEnvironment: ShSmalltalkGlobalsEnvironment new	
 	
 	
 ]
 
 { #category : #building }
 ShiftClassInstaller >> installInEnvironment: newClass [
+
+	"I only install if there is a name / non anonymous"
+	builder name ifNil: [ ^ self ].
+
 	"I only install in the environment if there is not oldClass installed."
 	(self installingEnvironment hasClassNamed: builder name) ifFalse:[
 		self installingEnvironment installClass: newClass withName: builder name.
@@ -135,6 +140,10 @@ ShiftClassInstaller >> installInEnvironment: newClass [
 
 { #category : #building }
 ShiftClassInstaller >> installSubclassInSuperclass: newClass [
+
+	"I only install if there is a name / non anonymous"
+	builder name ifNil: [ ^ self ].
+
 	newClass superclass addSubclass: newClass
 ]
 
@@ -224,7 +233,7 @@ ShiftClassInstaller >> migrateClassTo: newClass [
 			ifTrue: [ builder builderEnhancer migrateInstancesTo: newClass installer: self ].
 
 		{ oldClass. builder oldMetaclass } elementsForwardIdentityTo: { newClass. builder newMetaclass }.	
-	] valueUninterruptably.
+	] valueUninterruptably
 
 ]
 

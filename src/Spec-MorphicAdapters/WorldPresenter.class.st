@@ -22,22 +22,30 @@ WorldPresenter class >> defaultSpec [
 
 { #category : #private }
 WorldPresenter class >> setUpWorld [
-
 	World changeProportionalLayout.
 	World submorphs do: [:e | e delete ].
- 
- 	(Smalltalk at: #PolymorphSystemSettings) 
+ 	(self environment at: #PolymorphSystemSettings) 
 		perform: #desktopColor: 
-		with: Smalltalk ui theme backgroundColor.
- 	"((Smalltalk at: #UITheme) perform: #currentSettings) perform: #windowColor: with: (Color r: 0.745 g: 0.745 b: 0.745)."
-	(Smalltalk at: #TaskbarMorph) perform: #showTaskbar: with: false
+		with: self theme backgroundColor.
+	(self environment at: #TaskbarMorph) perform: #showTaskbar: with: false
 ]
 
 { #category : #private }
-WorldPresenter >> addPresenterIn: container withSpecLayout: aSpec [
+WorldPresenter >> addModelIn: container withSpec: aSpec [
+	
+	self model ifNil: [ ^ self ].
+	widget := self model buildWithSpec: aSpec.
+	
+	container
+		addMorph: widget
+		fullFrame: LayoutFrame identity
+]
 
-	self presenter ifNil: [ ^ self ].
-	widget := self presenter buildWithSpecLayout: aSpec.
+{ #category : #private }
+WorldPresenter >> addModelIn: container withSpecLayout: aSpec [
+
+	self model ifNil: [ ^ self ].
+	widget := self model buildWithSpecLayout: aSpec.
 	
 	container
 		addMorph: widget

@@ -1,5 +1,5 @@
 "
-A RBLiteralArrayNode is an AST node that represents literal arrays and literal byte arrays.
+An RBLiteralArrayNode is an AST node that represents literal arrays #(1 2 3) and literal byte arrays #[ 1 2 3 ].
 
 Instance Variables
 	contents: <Array of: RBLiteralNode> literal nodes of the array
@@ -48,8 +48,8 @@ RBLiteralArrayNode >> = anObject [
 ]
 
 { #category : #visiting }
-RBLiteralArrayNode >> acceptVisitor: aProgramNodeVisitor [ 
-	^aProgramNodeVisitor visitLiteralArrayNode: self
+RBLiteralArrayNode >> acceptVisitor: aProgramNodeVisitor [
+	^ aProgramNodeVisitor visitLiteralArrayNode: self
 ]
 
 { #category : #accessing }
@@ -75,15 +75,6 @@ RBLiteralArrayNode >> copyInContext: aDictionary [
 		contents: (self copyList: self contents inContext: aDictionary)
 		stopPosition: -1
 		isByteArray: isByteArray
-]
-
-{ #category : #generation }
-RBLiteralArrayNode >> dumpOn: aStream [
-	aStream
-		nextPutAll: self class name;
-		nextPutAll: ' value: #('.
-	(self contents collect: [ :each | each value ]) printOn: aStream delimiter: ' '.
-	aStream nextPutAll: ')'
 ]
 
 { #category : #comparing }

@@ -45,7 +45,7 @@ MenuMorph class >> chooseFrom: aList lines: linesArray title: queryString [
 		menu add: (aList at: i) asString target: [:v| result := v] selector: #value: argument: i.
 		(linesArray includes: i) ifTrue: [menu addLine]].
 	
-	menu invokeAt: ActiveHand position in: ActiveWorld allowKeyboard: true.
+	menu invokeAt: ActiveHand position in: self currentWorld allowKeyboard: true.
 	^result
 ]
 
@@ -70,7 +70,7 @@ MenuMorph class >> chooseFrom: aList values: valueList lines: linesArray title: 
 		menu add: (aList at: i) asString target: [:v| result := v] selector: #value: argument: (valueList at: i).
 		(linesArray includes: i) ifTrue:[menu addLine]].
 
-	menu invokeAt: ActiveHand position in: ActiveWorld allowKeyboard: true.
+	menu invokeAt: ActiveHand position in: self currentWorld allowKeyboard: true.
 	^result
 ]
 
@@ -130,7 +130,7 @@ MenuMorph class >> confirm: queryString trueChoice: trueChoice falseChoice: fals
 		argument: false.
 	[ menu
 		invokeAt: ActiveHand position
-		in: ActiveWorld
+		in: self currentWorld
 		allowKeyboard: true.
 	result isNil ] whileTrue.
 	^ result
@@ -294,6 +294,19 @@ MenuMorph >> add: aLabelString target: target selector: aSymbol argumentList: ar
 ]
 
 { #category : #construction }
+MenuMorph >> add: aLabelString target: anObject selector: aSymbol iconName: iconName [
+	"Append a menu item with the given label and the iconName. If the item is selected, it will send the given selector to the target object."
+
+	^ (self
+		add: aLabelString
+		target: anObject
+		selector: aSymbol
+		argumentList: EmptyArray)
+		icon: (self iconNamed: iconName);
+		yourself
+]
+
+{ #category : #construction }
 MenuMorph >> addAllFrom: aMenuMorph [
 	"This is a fast add..."
 	
@@ -388,6 +401,12 @@ MenuMorph >> addMenuItem: anItem [
 	self addMorphBack: anItem.
 	^ anItem
 
+]
+
+{ #category : #utils }
+MenuMorph >> addSeparator [
+	
+	self addMenuItem: MenuLineMorph new
 ]
 
 { #category : #'construction-UIManager' }
@@ -692,7 +711,7 @@ MenuMorph >> detachSubMenu: evt [
 { #category : #control }
 MenuMorph >> displayAt: aPoint during: aBlock [
 	"Add this menu to the Morphic world during the execution of the given block."
-	ActiveWorld addMorph: self centeredNear: aPoint.
+	self currentWorld addMorph: self centeredNear: aPoint.
 	self world displayWorld.  "show myself"
 	aBlock value.
 	self delete
@@ -834,18 +853,14 @@ MenuMorph >> hasSubMenu: aMenuMorph [
 { #category : #initialization }
 MenuMorph >> initialize [
 	super initialize.
-	
+
 	self setDefaultParameters.
 	self listDirection: #topToBottom.
 	self hResizing: #shrinkWrap.
 	self vResizing: #shrinkWrap.
-	defaultTarget := nil.
-	selectedItem := nil.
 	stayUp := false.
-	popUpOwner := nil.
 	self setProperty: #morphicLayerNumber toValue: self morphicLayerNumber.
-	self theme currentSettings preferRoundCorner
-		ifTrue: [ self useRoundedCorners ]
+	self theme currentSettings preferRoundCorner ifTrue: [ self useRoundedCorners ]
 ]
 
 { #category : #keymapping }
@@ -909,7 +924,7 @@ MenuMorph >> invokeModal [
 MenuMorph >> invokeModal: allowKeyboardControl [
 	"Invoke this menu and don't return until the user has chosen a value.  If the allowKeyboarControl boolean is true, permit keyboard control of the menu"
 
-	^ self invokeModalAt: ActiveHand position in: ActiveWorld allowKeyboard: allowKeyboardControl
+	^ self invokeModalAt: ActiveHand position in: self currentWorld allowKeyboard: allowKeyboardControl
 ]
 
 { #category : #'modal control' }
@@ -1282,7 +1297,7 @@ MenuMorph >> popUpInWorld: aWorld [
 MenuMorph >> popUpNoKeyboard [
 	"Present this menu in the current World, *not* allowing keyboard input into the menu"
 
-	^ self popUpAt: ActiveHand position forHand: ActiveHand in: ActiveWorld allowKeyboard: false
+	^ self popUpAt: ActiveHand position forHand: ActiveHand in: self currentWorld allowKeyboard: false
 ]
 
 { #category : #accessing }

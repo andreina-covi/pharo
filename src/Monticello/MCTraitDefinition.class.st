@@ -8,38 +8,36 @@ Class {
 }
 
 { #category : #'instance creation' }
-MCTraitDefinition class >> name: classNameString traitComposition:  traitCompositionString category:  categoryString comment:  commentString commentStamp: commentStamp [
-	^ self instanceLike:
-		(self new initializeWithName: classNameString 
-			traitComposition:  traitCompositionString
-			category:  categoryString
-			comment:  commentString  
-			commentStamp:   commentStamp)
-
+MCTraitDefinition class >> name: classNameString traitComposition: traitCompositionString category: categoryString comment: commentString commentStamp: commentStamp [
+	^ self new
+		initializeWithName: classNameString
+		traitComposition: traitCompositionString
+		category: categoryString
+		comment: commentString
+		commentStamp: commentStamp
 ]
 
 { #category : #'instance creation' }
-MCTraitDefinition class >> name: classNameString traitComposition:  traitCompositionString category:  categoryString instVarNames: ivarArray classInstVarNames: civarArray comment:  commentString commentStamp:   commentStamp [
-	^ self instanceLike:
-		(self new initializeWithName: classNameString 
-			traitComposition:  traitCompositionString
-			category:  categoryString
-			instVarNames: ivarArray
-			classInstVarNames: civarArray
-			comment:  commentString  
-			commentStamp:   commentStamp)
+MCTraitDefinition class >> name: classNameString traitComposition: traitCompositionString category: categoryString instVarNames: ivarArray classInstVarNames: civarArray comment: commentString commentStamp: commentStamp [
+	^ self new
+		initializeWithName: classNameString
+		traitComposition: traitCompositionString
+		category: categoryString
+		instVarNames: ivarArray
+		classInstVarNames: civarArray
+		comment: commentString
+		commentStamp: commentStamp
 ]
 
 { #category : #'instance creation' }
-MCTraitDefinition class >> name: classNameString traitComposition:  traitCompositionString category:  categoryString instVarNames: ivarArray comment: commentString commentStamp: commentStamp [
-	^ self instanceLike:
-		(self new initializeWithName: classNameString 
-			traitComposition:  traitCompositionString
-			category:  categoryString
-			instVarNames: ivarArray
-			comment:  commentString  
-			commentStamp:   commentStamp)
-
+MCTraitDefinition class >> name: classNameString traitComposition: traitCompositionString category: categoryString instVarNames: ivarArray comment: commentString commentStamp: commentStamp [
+	^ self new
+		initializeWithName: classNameString
+		traitComposition: traitCompositionString
+		category: categoryString
+		instVarNames: ivarArray
+		comment: commentString
+		commentStamp: commentStamp
 ]
 
 { #category : #comparing }
@@ -117,7 +115,7 @@ MCTraitDefinition >> initializeWithName: classNameString
 		name := classNameString asSymbol.
 		traitComposition := traitCompositionString.
 	     category := categoryString.
-		comment := commentString withSqueakLineEndings.
+		comment := commentString withInternalLineEndings.
 		variables := OrderedCollection  new.
 		commentStamp :=  commentStampString ifNil: [self defaultCommentStamp]
 
@@ -135,7 +133,7 @@ MCTraitDefinition >> initializeWithName: classNameString
 		name := classNameString asSymbol.
 		traitComposition := traitCompositionString.
 	    category := categoryString.
-		comment := commentString withSqueakLineEndings.
+		comment := commentString withInternalLineEndings.
 		commentStamp :=  commentStampString ifNil: [self defaultCommentStamp].
 		variables := OrderedCollection  new.
 		self addVariables: ivarArray ofType: MCInstanceVariableDefinition.
@@ -153,7 +151,7 @@ MCTraitDefinition >> initializeWithName: classNameString
 		name := classNameString asSymbol.
 		traitComposition := traitCompositionString.
 	    category := categoryString.
-		comment := commentString withSqueakLineEndings.
+		comment := commentString withInternalLineEndings.
 		commentStamp :=  commentStampString ifNil: [self defaultCommentStamp].
 		variables := OrderedCollection  new.
 		self addVariables: ivarArray ofType: MCInstanceVariableDefinition.

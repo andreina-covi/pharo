@@ -31,6 +31,18 @@ RGBSliders class >> defaultSpec [
 		yourself
 ]
 
+{ #category : #example }
+RGBSliders class >> example [
+	<sampleInstance>
+	| example |
+	example := self new.
+	example
+		title: 'RGBSliders example';
+		extent: 300 @ 200;
+		openDialogWithSpec.
+	^ example
+]
+
 { #category : #accessing }
 RGBSliders >> blueSlider [
 	^ blueSlider

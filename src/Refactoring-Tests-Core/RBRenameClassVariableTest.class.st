@@ -31,22 +31,34 @@ RBRenameClassVariableTest >> testNonExistantName [
 { #category : #tests }
 RBRenameClassVariableTest >> testRenameClassVar [
 	| refactoring class |
-	refactoring := RBRenameClassVariableRefactoring 
-		rename: #RecursiveSelfRule
-		to: #RSR
-		in: RBTransformationRuleTestData.
+	refactoring := RBRenameClassVariableRefactoring rename: #RecursiveSelfRule to: #RSR in: RBTransformationRuleTestData.
 	self executeRefactoring: refactoring.
 	class := refactoring model classNamed: #RBTransformationRuleTestData.
 	self assert: (class directlyDefinesClassVariable: #RSR).
 	self deny: (class directlyDefinesClassVariable: #RecursiveSelfRule).
-	self assert: (class classSide parseTreeFor: #initializeAfterLoad1) = (RBParser parseMethod: 'initializeAfterLoad1
+	self
+		assert: (class classSide parseTreeFor: #initializeAfterLoad1)
+		equals:
+			(self
+				parseMethod:
+					'initializeAfterLoad1
 								RSR := RBParseTreeSearcher new.
 								RSR
 									addMethodSearches: #(''`@methodName: `@args | `@temps | self `@methodName: `@args'' ''`@methodName: `@args | `@temps | ^self `@methodName: `@args'')
 											-> [:aNode :answer | true]').
-	self assert: (class classSide parseTreeFor: #nuke) = (RBParser parseMethod: 'nuke
+	self
+		assert: (class classSide parseTreeFor: #nuke)
+		equals:
+			(self
+				parseMethod:
+					'nuke
 								RSR := nil').
-	self assert: (class parseTreeFor: #checkMethod:) = (RBParser parseMethod: 'checkMethod: aSmalllintContext 
+	self
+		assert: (class parseTreeFor: #checkMethod:)
+		equals:
+			(self
+				parseMethod:
+					'checkMethod: aSmalllintContext 
 								class := aSmalllintContext selectedClass.
 								(rewriteRule executeTree: aSmalllintContext parseTree) ifTrue: 
 										[(RSR executeTree: rewriteRule tree initialAnswer: false)
@@ -68,8 +80,8 @@ RBRenameClassVariableTest >> testRenameClassVarInSharedPool [
 	class := refactoring model classNamed: #RBSharedPoolForTestData.
 	userClass := refactoring model classNamed: #RBClassUsingSharedPoolForTestData.
 	
-	self assert: (class parseTreeFor: #msg1) = (RBParser parseMethod: 'msg1 ^ VarOne').	
-	self assert: (class parseTreeFor: #msg2) = (RBParser parseMethod: 'msg2 ^ VarOne').	
-	self assert: (userClass parseTreeFor: #msg3) = (RBParser parseMethod: 'msg3 ^ VarOne').	
+	self assert: (class parseTreeFor: #msg1) equals: (self parseMethod: 'msg1 ^ VarOne').	
+	self assert: (class parseTreeFor: #msg2) equals: (self parseMethod: 'msg2 ^ VarOne').	
+	self assert: (userClass parseTreeFor: #msg3) equals: (self parseMethod: 'msg3 ^ VarOne').	
 
 ]

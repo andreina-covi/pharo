@@ -13,30 +13,24 @@ RBCreateAccessorsForVariableTest >> setUp [
 { #category : #tests }
 RBCreateAccessorsForVariableTest >> testExistingInstanceVariableAccessors [
 	| ref |
-	ref := RBCreateAccessorsForVariableRefactoring 
-		variable: 'name'
-		class: RBLintRuleTestData
-		classVariable: false.
+	ref := RBCreateAccessorsForVariableRefactoring variable: 'name' class: RBLintRuleTestData classVariable: false.
 	self executeRefactoring: ref.
 	self assertEmpty: ref changes changes.
-	self assert: ref setterMethod == #name:.
-	self assert: ref getterMethod == #name
+	self assert: ref setterMethod identicalTo: #name:.
+	self assert: ref getterMethod identicalTo: #name
 ]
 
 { #category : #tests }
 RBCreateAccessorsForVariableTest >> testNewClassVariableAccessors [
 	| ref class |
-	ref := RBCreateAccessorsForVariableRefactoring 
-		variable: 'Foo1'
-		class: RBLintRuleTestData
-		classVariable: true.
+	ref := RBCreateAccessorsForVariableRefactoring variable: 'Foo1' class: RBLintRuleTestData classVariable: true.
 	self executeRefactoring: ref.
 	class := ref model metaclassNamed: #RBLintRuleTestData.
 	self denyEmpty: ref changes changes.
-	self assert: ref setterMethod == #foo1:.
-	self assert: ref getterMethod == #foo1.
-	self assert: (class parseTreeFor: #foo1) = (RBParser parseMethod: 'foo1 ^Foo1').
-	self assert: (class parseTreeFor: #foo1:) = (RBParser parseMethod: 'foo1: anObject Foo1 := anObject')
+	self assert: ref setterMethod identicalTo: #foo1:.
+	self assert: ref getterMethod identicalTo: #foo1.
+	self assert: (class parseTreeFor: #foo1) equals: (self parseMethod: 'foo1 ^Foo1').
+	self assert: (class parseTreeFor: #foo1:) equals: (self parseMethod: 'foo1: anObject Foo1 := anObject')
 ]
 
 { #category : #tests }
@@ -46,10 +40,10 @@ RBCreateAccessorsForVariableTest >> testNewInstanceVariableAccessors [
 	self executeRefactoring: ref.
 	class := ref model classNamed: #RBLintRuleTestData.
 	self denyEmpty: ref changes changes.
-	self assert: ref setterMethod == #foo1:.
-	self assert: ref getterMethod == #foo1.
-	self assert: (class parseTreeFor: #foo1) = (RBParser parseMethod: 'foo1 ^foo1').
-	self assert: (class parseTreeFor: #foo1:) = (RBParser parseMethod: 'foo1: anObject foo1 := anObject')
+	self assert: ref setterMethod identicalTo: #foo1:.
+	self assert: ref getterMethod identicalTo: #foo1.
+	self assert: (class parseTreeFor: #foo1) equals: (self parseMethod: 'foo1 ^foo1').
+	self assert: (class parseTreeFor: #foo1:) equals: (self parseMethod: 'foo1: anObject foo1 := anObject')
 ]
 
 { #category : #'failure tests' }

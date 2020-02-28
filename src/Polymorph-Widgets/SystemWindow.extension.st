@@ -325,10 +325,10 @@ SystemWindow >> animateClose [
 	restoredRect := self bounds.
 	smallRect := restoredRect scaledAndCenteredIn: (0@0 extent: 20@20).
 	smallRect := smallRect align: smallRect center with: restoredRect center.
-	steps := self theme settings animationSettings numberOfSteps.
+	steps := self theme numberOfStepsForAnimations.
 	rects := ((steps - 1)/steps to: 0 by: -1/steps) collect: [:x |
 		smallRect interpolateTo: restoredRect at: (20 raisedTo: x) - 1 / 19].
-	World displayWorldSafely.
+	self currentWorld displayWorldSafely.
 	self fastAnimateRectangles: rects
 ]
 
@@ -339,7 +339,7 @@ SystemWindow >> animateMaximize [
 	|expandedRect restoredRect rects steps|
 	expandedRect := self fullscreenBounds.
 	restoredRect := self bounds.
-	steps := self theme settings animationSettings numberOfSteps.
+	steps := self theme numberOfStepsForAnimations.
 	rects := (1/steps to: 1 by: 1/steps) collect: [:x |
 		restoredRect interpolateTo: expandedRect at: (20 raisedTo: x) - 1 / 19].
 	self fastAnimateRectangles: rects
@@ -357,7 +357,7 @@ SystemWindow >> animateMinimize [
 					globalPointToLocal: fullFrame topLeft)
 					extent: fullFrame extent]
 		ifFalse: [fullFrame].
-	steps := self theme settings animationSettings numberOfSteps.
+	steps := self theme numberOfStepsForAnimations.
 	rects := ((steps - 1)/steps to: 0 by: -1/steps) collect: [:x |
 		buttonRect interpolateTo: restoredRect at: (20 raisedTo: x) - 1 / 19].
 	self fastAnimateRectangles: rects
@@ -370,7 +370,7 @@ SystemWindow >> animateRestore [
 	|expandedRect restoredRect rects steps|
 	expandedRect := self bounds.
 	restoredRect := self unexpandedFrame.
-	steps := self theme settings animationSettings numberOfSteps.
+	steps := self theme numberOfStepsForAnimations.
 	rects := ((steps - 1)/steps to: 0 by: -1/steps) collect: [:x |
 		restoredRect interpolateTo: expandedRect at: (20 raisedTo: x) - 1 / 19].
 	self fastAnimateRectangles: rects
@@ -388,7 +388,7 @@ SystemWindow >> animateRestoreFromMinimized [
 					globalPointToLocal: fullFrame topLeft)
 					extent: fullFrame extent]
 		ifFalse: [fullFrame].
-	steps := self theme settings animationSettings numberOfSteps.
+	steps := self theme numberOfStepsForAnimations.
 	rects := (1/steps to: 1 by: 1/steps) collect: [:x |
 		buttonRect interpolateTo: restoredRect at: (20 raisedTo: x) - 1 / 19].
 	self fastAnimateRectangles: rects
@@ -440,12 +440,6 @@ SystemWindow >> bringBehind: aMorph [
 ]
 
 { #category : #'*Polymorph-Widgets' }
-SystemWindow >> buildWindowMenu [
-  
-	^ self menuBuilder menu.
-]
-
-{ #category : #'*Polymorph-Widgets' }
 SystemWindow >> closeBoxHit [
 	"The user clicked on the close-box control in the window title.
 	For Mac users only, the Mac convention of option-click-on-close-box is obeyed if the mac option key is down.
@@ -484,14 +478,16 @@ SystemWindow >> configureForEmbedding [
 
 { #category : #'*Polymorph-Widgets' }
 SystemWindow >> configureForUnembedding [
+
 	"Set up the window so it can be unembedded and placed in the world."
 
-	labelArea owner isNil ifTrue: [
-		self
-			makeBordered;
-			initializeLabelArea;
-			themeChanged;
-			addGrips]
+	labelArea owner
+		ifNil: [ self
+				makeBordered;
+				initializeLabelArea;
+				themeChanged;
+				addGrips
+			]
 ]
 
 { #category : #'*Polymorph-Widgets' }
@@ -580,12 +576,12 @@ SystemWindow >> expandBoxHit [
 				^self show].
 	self unexpandedFrame
 		ifNil: [self playMaximizeSound.
-				self theme settings animationSettings useAnimation ifTrue: [self animateMaximize].
+				self theme shouldUseAnimations ifTrue: [self animateMaximize].
 				self
 					unexpandedFrame: fullFrame;
 					fullscreen]
 		ifNotNil: [self playRestoreDownSound.
-				self theme settings animationSettings useAnimation ifTrue: [self animateRestore].
+				self theme shouldUseAnimations ifTrue: [self animateRestore].
 				self
 					bounds: self unexpandedFrame;
 					unexpandedFrame: nil].
@@ -598,7 +594,7 @@ SystemWindow >> fastAnimateRectangles: rects [
 	
 	|delay col merged|
 	rects ifEmpty: [^self].
-	delay := Delay forMilliseconds: (self theme settings animationSettings delay).
+	delay := Delay forMilliseconds: (self theme animationSettings delay).
 	col := Color gray alpha: 0.5.
 	merged := rects first.
 	rects withIndexDo: [:r :i |
@@ -610,7 +606,7 @@ SystemWindow >> fastAnimateRectangles: rects [
 		merged := merged merge: r.
 		delay wait].
 	merged := merged expandBy: 1.
-	World invalidRect: merged from: self
+	self currentWorld invalidRect: merged from: self
 ]
 
 { #category : #'*Polymorph-Widgets' }
@@ -845,11 +841,10 @@ SystemWindow >> labelHeight [
 
 { #category : #'*Polymorph-Widgets' }
 SystemWindow >> labelString [
+
 	"Answer the actual label string."
 
-	^label isNil
-		ifTrue: [labelString]
-		ifFalse: [label contents asString]
+	^ label ifNil: [ labelString ] ifNotNil: [ label contents asString ]
 ]
 
 { #category : #'*Polymorph-Widgets' }
@@ -1004,7 +999,7 @@ SystemWindow >> model: anObject [
 			setProperty: #paneColor toValue: self defaultBackgroundColor;
 			fillStyle: self fillStyleToUse;
 			setStripeColorsFrom: self paneColorToUse.
-		self theme settings fadedBackgroundWindows ifFalse: [ "since not done in stripes"
+		self theme fadedBackgroundWindows ifFalse: [ "since not done in stripes"
 			self adoptPaneColor: self paneColor]].
 	self minimumExtent: (
 		(anObject respondsTo: #minimumExtent)
@@ -1348,7 +1343,7 @@ SystemWindow >> setWindowColor: incomingColor [
 	aColor := incomingColor.
 	self setProperty: #paneColor toValue: aColor.
 	self setStripeColorsFrom: aColor.
-	self theme settings fadedBackgroundWindows 
+	self theme fadedBackgroundWindows 
 		ifFalse: [self adoptPaneColor: aColor]. "reverse optimisation"
 	self changed.
 ]

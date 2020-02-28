@@ -15,7 +15,7 @@ Class {
 PropertySlot >> emitStore: methodBuilder [
 	"generate bytecode for 'baseSlot at: 1 put: <stackTop>'"
 	| tempName |
-	tempName := Object new.  "we need a unique Object as a temp name"
+	tempName := '0slotTempForStackManipulation'.
 	methodBuilder
 		addTemp: tempName;
 		storeTemp: tempName;
@@ -48,7 +48,7 @@ PropertySlot >> installingIn: aClass [
 	aClass classLayout 
 		resolveSlot: #'_propertyBaseSlot'   
 		ifFound:  [: slot |  baseSlot := slot ]
-		ifNone: [aClass addSlot: (baseSlot := #'_propertyBaseSlot' => BaseSlot default: Dictionary new)].
+		ifNone: [aClass addSlot: (baseSlot := #'_propertyBaseSlot' => BaseSlot default: Dictionary new)]
 	
 ]
 

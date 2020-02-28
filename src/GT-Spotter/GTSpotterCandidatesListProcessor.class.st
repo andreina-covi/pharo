@@ -17,8 +17,37 @@ Class {
 		'keyBinding',
 		'sortBlock'
 	],
+	#classVars : [
+		'DefaultItemsLimit'
+	],
 	#category : #'GT-Spotter-Processors'
 }
+
+{ #category : #'accessing-defaults' }
+GTSpotterCandidatesListProcessor class >> defaultItemsLimit [
+
+	^ DefaultItemsLimit ifNil: [ DefaultItemsLimit := 25 ]
+]
+
+{ #category : #'accessing-defaults' }
+GTSpotterCandidatesListProcessor class >> defaultItemsLimit: aValue [
+
+	DefaultItemsLimit := aValue
+]
+
+{ #category : #'accessing-defaults' }
+GTSpotterCandidatesListProcessor class >> settingsOn: aBuilder [
+	<systemsettings>
+
+	(aBuilder setting: #defaultItemsLimit)
+		target: self;
+		parent: #gtspotter;
+		label: 'Number of results per category';
+		default: 25;
+		order: 100;
+		description:
+			'Number of results per category to show in Spotter'
+]
 
 { #category : #accessing }
 GTSpotterCandidatesListProcessor >> actLogic [
@@ -67,7 +96,7 @@ GTSpotterCandidatesListProcessor >> defaultContinueItemsLimit [
 
 { #category : #'accessing-defaults' }
 GTSpotterCandidatesListProcessor >> defaultItemsLimit [
-	^ 5
+	^ self class defaultItemsLimit
 ]
 
 { #category : #private }
@@ -114,9 +143,10 @@ GTSpotterCandidatesListProcessor >> itemFilterName: aBlockWithOneArgument [
 
 { #category : #private }
 GTSpotterCandidatesListProcessor >> itemFilterNameFor: anObject [
-	^ itemFilterNameBlock isNil
-		ifTrue: [ super itemFilterNameFor: anObject ]
-		ifFalse: [ itemFilterNameBlock cull: anObject ]
+
+	^ itemFilterNameBlock
+		ifNil: [ super itemFilterNameFor: anObject ]
+		ifNotNil: [ itemFilterNameBlock cull: anObject ]
 ]
 
 { #category : #accessing }
@@ -131,9 +161,8 @@ GTSpotterCandidatesListProcessor >> itemIcon: aBlockWithOneArgument [
 
 { #category : #private }
 GTSpotterCandidatesListProcessor >> itemIconFor: anObject [
-	^ itemIconBlock isNil
-		ifTrue: [ super itemIconFor: anObject ]
-		ifFalse: [ itemIconBlock cull: anObject ]
+
+	^ itemIconBlock ifNil: [ super itemIconFor: anObject ] ifNotNil: [ itemIconBlock cull: anObject ]
 ]
 
 { #category : #accessing }
@@ -148,9 +177,8 @@ GTSpotterCandidatesListProcessor >> itemName: aBlockWithOneArgument [
 
 { #category : #private }
 GTSpotterCandidatesListProcessor >> itemNameFor: anObject [
-	^ itemNameBlock isNil
-		ifTrue: [ super itemNameFor: anObject ]
-		ifFalse: [ itemNameBlock cull: anObject ]
+
+	^ itemNameBlock ifNil: [ super itemNameFor: anObject ] ifNotNil: [ itemNameBlock cull: anObject ]
 ]
 
 { #category : #scripting }

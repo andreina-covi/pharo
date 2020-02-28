@@ -157,7 +157,7 @@ HEInstaller >> existingClass: aHEClass [
 ]
 
 { #category : #'validating existance' }
-HEInstaller >> existingTrait: aHETrait. [
+HEInstaller >> existingTrait: aHETrait [
 	(environment includesKey: aHETrait traitName) ifTrue:[ 
 		self error: (self messageExistingTrait: aHETrait)
 	].
@@ -274,6 +274,6 @@ HEInstaller >> shouldBuildMethod: aHEMethod in: aClass [
 HEInstaller >> validateNoNewUndeclared [
 	self reportNewUndeclareds: self createdUndeclared.
 	
-	('[Hermes] Remaining Undeclared variables in the system: '
-		, Undeclared keys printString) logCr
+	SystemNotification signal: ('[Hermes] Remaining Undeclared variables in the system: '
+		, Undeclared keys printString)
 ]

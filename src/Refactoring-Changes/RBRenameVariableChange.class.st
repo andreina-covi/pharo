@@ -44,7 +44,7 @@ RBRenameVariableChange >> addNewVariable [
 { #category : #accessing }
 RBRenameVariableChange >> changeClass [
 	| class |
-	class := Smalltalk globals at: self changeClassName ifAbsent: [ ^ nil ].
+	class := onSystemDictionary classNamed: self changeClassName.
 	^ isMeta ifTrue: [ class class ] ifFalse: [ class ]
 ]
 
@@ -63,9 +63,9 @@ RBRenameVariableChange >> changeClassName [
 
 { #category : #accessing }
 RBRenameVariableChange >> changeClassName: aSymbol [
+
 	className := aSymbol.
-	isMeta isNil
-		ifTrue: [ isMeta := false ]
+	isMeta ifNil: [ isMeta := false ]
 ]
 
 { #category : #printing }

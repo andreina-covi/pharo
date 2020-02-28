@@ -85,27 +85,42 @@ It possible to define more than one method to give the possibility to use anothe
 "
 Class {
 	#name : #ComposablePresenter,
-	#superclass : #Presenter,
-	#traits : 'TSpecObservable',
-	#classTraits : 'TSpecObservable classTrait',
+	#superclass : #Model,
 	#instVars : [
-		'#layout',
-		'#application',
-		'#focusOrder',
-		'#extentHolder',
-		'#additionalKeyBindings',
-		'#keyStrokesForNextFocusHolder',
-		'#keyStrokesForPreviousFocusHolder',
-		'#windowIcon',
-		'#aboutText',
-		'#askOkToClose',
-		'#titleHolder',
-		'#transmissions',
-		'#additionalSubpresentersMap',
-		'#visible => SpecObservableSlot'
+		'focusOrder',
+		'owner',
+		'window',
+		'spec',
+		'extentHolder',
+		'needRebuild',
+		'additionalKeyBindings',
+		'keyStrokesForNextFocusHolder',
+		'keyStrokesForPreviousFocusHolder',
+		'windowIcon',
+		'aboutText',
+		'askOkToClose',
+		'titleHolder'
 	],
 	#category : #'Spec-Core-Base'
 }
+
+{ #category : #defaults }
+ComposablePresenter class >> buttonHeight [
+
+	^ self defaultFont height + 12
+]
+
+{ #category : #defaults }
+ComposablePresenter class >> buttonWidth [
+
+	^ (self defaultFont widthOfString: 'eilwp') + 44
+]
+
+{ #category : #queries }
+ComposablePresenter class >> defaultFont [ 
+
+	^ self platform defaultFont
+]
 
 { #category : #specs }
 ComposablePresenter class >> defaultSpec [
@@ -113,62 +128,39 @@ ComposablePresenter class >> defaultSpec [
 	^ self subclassResponsibility
 ]
 
-{ #category : #accessing }
+{ #category : #defaults }
 ComposablePresenter class >> iconNamed: aSymbol [
 	^ Smalltalk ui icons iconNamed: aSymbol
 ]
 
-{ #category : #'instance creation' }
-ComposablePresenter class >> newApplication: anApplication [
+{ #category : #defaults }
+ComposablePresenter class >> inputTextHeight [
 
-	^ self basicNew
-		application: anApplication;
-		initialize;
-		yourself
+	^ self defaultFont height + 12
+]
+
+{ #category : #defaults }
+ComposablePresenter class >> labelHeight [
+
+	^ self defaultFont height
 ]
 
 { #category : #'instance creation' }
-ComposablePresenter class >> newApplication: anApplication model: aModel [
+ComposablePresenter class >> on: aDomainObject [
 
 	^ self basicNew
-		application: anApplication;
-		setModelBeforeInitialization: aModel;
-		initialize;
-		yourself
-]
-
-{ #category : #'instance creation' }
-ComposablePresenter class >> newApplication: anApplication owner: anOwningPresenter [
-
-	^ self basicNew
-		application: anApplication;
-		owner: anOwningPresenter;
-		initialize;
-		yourself
-]
-
-{ #category : #'instance creation' }
-ComposablePresenter class >> newApplication: anApplication owner: anOwningPresenter model: aDomainObject [
-
-	^ self basicNew
-		application: anApplication;
-		owner: anOwningPresenter;
 		setModelBeforeInitialization: aDomainObject;
 		initialize;
 		yourself
 ]
 
 { #category : #'instance creation' }
-ComposablePresenter class >> on: aDomainObject [
+ComposablePresenter class >> owner: anOwningPresenter [
 
-	"self 
-		deprecated: 'ComposablePresenters are instantiated in the context of an application!' 
-		on: '2019-02-26' 
-		in: #Pharo8."
-		
-	^ self 
-		newApplication: SpecNullApplication new 
-		model: aDomainObject 
+	^ self basicNew
+		owner: anOwningPresenter;
+		initialize;
+		yourself
 ]
 
 { #category : #'instance creation' }
@@ -181,10 +173,20 @@ ComposablePresenter class >> owner: anOwningPresenter on: aDomainObject [
 		yourself
 ]
 
-{ #category : #'as yet unclassified' }
-ComposablePresenter class >> systemIconName [
+{ #category : #platform }
+ComposablePresenter class >> platform [
 
-	^ #smallWindow
+	^ SpecInterpreter bindings
+]
+
+{ #category : #protocol }
+ComposablePresenter class >> specSelectors [
+	^ self class withAllSuperclasses
+		flatCollect: [ :class | 
+			(((SpecPragmaCollector behavior: class)
+				filter: [ :pragma | pragma selector = #spec ])
+				reset;
+				collected) collect: [ :pragmas | pragmas method selector ] ]
 ]
 
 { #category : #specs }
@@ -193,16 +195,27 @@ ComposablePresenter class >> title [
 	^ 'Untitled window'
 ]
 
-{ #category : #'api-window' }
+{ #category : #defaults }
+ComposablePresenter class >> toolbarHeight [
+
+	^ self defaultFont height + 12
+]
+
+{ #category : #api }
 ComposablePresenter >> aboutText [
 
 	^ aboutText value ifNil: [ aboutText value: 'The about text for this window has not been set.'; value]
 ]
 
-{ #category : #'api-window' }
+{ #category : #api }
 ComposablePresenter >> aboutText: aString [
 
 	aboutText value: aString
+]
+
+{ #category : #api }
+ComposablePresenter >> adapterFrom: aSpecLayout model: aModel [
+	^ SpecInterpreter interpretASpec: aSpecLayout model: aModel
 ]
 
 { #category : #private }
@@ -229,29 +242,7 @@ ComposablePresenter >> addMenuItemsToWindowMenu: aMenu [
 { #category : #'api-shortcuts' }
 ComposablePresenter >> additionalKeyBindings [
 
-	self flag: #TODO. "Think is... not all presenters can have keybindings. Why are we
-	putting this functionality here and not in a trait?"
-	^ additionalKeyBindings
-]
-
-{ #category : #TOREMOVE }
-ComposablePresenter >> additionalSubpresentersMap [
-
-	"additionalSubpresentersMap serves for storing of sub-presenters that are not
-	stored in instance variables"
-	
-	self flag: #TOREMOVE. "This is now provided by TDynamicPresenter"
-	^ additionalSubpresentersMap ifNil: [ additionalSubpresentersMap := Dictionary new ]
-]
-
-{ #category : #'private-traversing' }
-ComposablePresenter >> allPresenters [
-	| allPresenters |
-
-	allPresenters := OrderedCollection new.
-	self traversePresentersDo: [ :each | 
-		allPresenters add: each ].
-	^ allPresenters
+	^ additionalKeyBindings value
 ]
 
 { #category : #api }
@@ -260,93 +251,100 @@ ComposablePresenter >> announce: anAnnouncement [
 	self announcer announce: anAnnouncement
 ]
 
-{ #category : #accessing }
-ComposablePresenter >> application [
+{ #category : #api }
+ComposablePresenter >> apiSelectors [
 
-	^ self hasOwner 
-		ifTrue: [ self owner application ]
-		ifFalse: [
-			application ifNil: [ 
-				self flag: #TODO. "This is incorrect, no component who is also a root
-				(it does not has owner) should not have an application. But in older times
-				it was not like that and to support such components we assign them to a 
-				default application"
-				application := SpecApplication defaultApplication ] ]
+	^ self class apiSelectors
 ]
 
-{ #category : #accessing }
-ComposablePresenter >> application: anApplication [
-
-	application := anApplication
-]
-
-{ #category : #'window menu' }
+{ #category : #api }
 ComposablePresenter >> applyMenuModel: aMenuModel [
 
 	aMenuModel menuGroups do: [ :group |
 		group menuItems do: [ :item |
-			item shortcut ifNotNil: [ :shortcut | 
-				self 
-					bindKeyCombination: shortcut 
-					toAction: [ item performMenuActionWith: #() ] ].
+			item shortcut ifNotNil: [ :shortcut | self bindMenuKeyCombination: shortcut toAction: [ item performMenuActionWith: {} ] ].
 			item subMenu ifNotNil: [ :subMenu | subMenu applyTo: self	] ] ]
 ]
 
-{ #category : #converting }
-ComposablePresenter >> asPresenter [
-	"This allows to use presenter instances inside layouts directly"
-	^ self
-]
-
-{ #category : #'api-window' }
+{ #category : #api }
 ComposablePresenter >> askOkToClose [
 
 	^ askOkToClose value
 ]
 
-{ #category : #'api-window' }
+{ #category : #api }
 ComposablePresenter >> askOkToClose: aBoolean [
-	self flag: #TODO. "Move this to WindowPresenter (it should be added in 
-	#initializeWindow:"
+
 	askOkToClose value: aBoolean
 ]
 
 { #category : #'api-shortcuts' }
 ComposablePresenter >> bindKeyCombination: aShortcut toAction: aBlock [
 
-	additionalKeyBindings ifNil: [ additionalKeyBindings := Dictionary new ].
 	additionalKeyBindings at: aShortcut put: aBlock.
-	self withAdapterDo: [ :anAdapter | 
-		anAdapter bindKeyCombination: aShortcut toAction: aBlock ]
+	
+	self changed: #bindKeyCombination:toAction: with: {aShortcut . aBlock}
 ]
 
-{ #category : #'api-window' }
+{ #category : #'api-shortcuts' }
+ComposablePresenter >> bindMenuKeyCombination: aShortcut toAction: aBlock [
+
+	additionalKeyBindings at: aShortcut put: aBlock.
+	
+	self changed: #bindMenuKeyCombination:toAction: with: {aShortcut . aBlock}
+]
+
+{ #category : #api }
+ComposablePresenter >> buildWithSpec [
+	"Build the widget using the default spec"
+	
+	^ self buildWithSpec: self defaultSpecSelector
+]
+
+{ #category : #api }
+ComposablePresenter >> buildWithSpec: aSpec [
+	"Build the widget using the spec name provided as argument"
+	
+	^ self buildWithSpecLayout: (self retrieveSpec: aSpec)
+]
+
+{ #category : #api }
+ComposablePresenter >> buildWithSpecLayout: aSpecLayout [
+	"Build the widget using the spec name provided as argument"
+	| widget adapter|
+	adapter := self adapterFrom: aSpecLayout model: self.
+	widget := adapter asWidget.
+	self setExtentAndBindingTo: widget.
+	^ widget
+]
+
+{ #category : #api }
 ComposablePresenter >> cancelled [
-	self flag: #TODO. "just for dialogs... I wonder if we need it here?"
 
-	self withWindowDo: #cancelled
+	^ self window
+		ifNil: [ false ]
+		ifNotNil: [ :w | w cancelled ]
 ]
 
-{ #category : #TOMOVE }
+{ #category : #api }
 ComposablePresenter >> centerWidget: aWindow [
 
 	self changed: #centerWidget: with: { aWindow }
 ]
 
-{ #category : #'api-window' }
+{ #category : #api }
 ComposablePresenter >> centered [
 
-	self withWindowDo: #centered
+	window value ifNotNil: [ :w | w centered ]
 ]
 
-{ #category : #TOMOVE }
+{ #category : #api }
 ComposablePresenter >> centeredRelativeTo: aModel [
 
-	self withWindowDo: [ :w | 
-		w centeredRelativeTo: aModel ]
+	window value ifNotNil: [ :w | w centeredRelativeTo: aModel ]
 ]
 
-{ #category : #private }
+{ #category : #'instance creation' }
 ComposablePresenter >> createInstanceFor: aClassSymbol [
 	"Retrieve the class corresponding to aClassSymbol using the bindings, then create a new instance of theis class"
 	| class |
@@ -361,26 +359,39 @@ ComposablePresenter >> defaultSpec [
 	^ self class perform: self defaultSpecSelector
 ]
 
-{ #category : #'api-showing' }
-ComposablePresenter >> defaultWindowPresenterClass [
+{ #category : #private }
+ComposablePresenter >> defaultSpecSelector [
+	self class class
+		withAllSuperclassesDo: [ :class | 
+			(((SpecPragmaCollector behavior: class)
+				filter:
+					[ :pragma | pragma selector = 'spec:' and: [ pragma arguments includes: #default ] ])
+				reset;
+				collected)
+				ifNotEmpty: [ :pragmas | ^ pragmas first method selector ] ].
+	self specSelectors
+		ifNotEmpty: [ :col | 
+			col size = 1
+				ifTrue: [ ^ col first ] ].
 
+	"should use pragmas"
+	^ #defaultSpec
+]
+
+{ #category : #accessing }
+ComposablePresenter >> defaultWindowModelClass [ 
 	^ WindowPresenter
 ]
 
 { #category : #private }
 ComposablePresenter >> delete [
 
-	self withWindowDo: #delete
+	window value
+		ifNil: [ self changed: #delete with: #() ]
+		ifNotNil: [ :w | w delete ]
 ]
 
-{ #category : #accessing }
-ComposablePresenter >> enabled: aBoolean [
-
-	self presentersDo: [ :each | 
-		each enabled: aBoolean ]
-]
-
-{ #category : #TOMOVE }
+{ #category : #api }
 ComposablePresenter >> ensureExtentFor: widget [
 
 	self extent
@@ -400,7 +411,7 @@ ComposablePresenter >> ensureKeyBindingsFor: aWidget [
 	self registerKeyStrokesForNextFor: aWidget.
 	self registerKeyStrokesForPreviousFor: aWidget.
 	
-	self additionalKeyBindings associationsDo: [:association | aWidget bindKeyCombination: association key toAction: association value ]
+	additionalKeyBindings associationsDo: [:association | aWidget bindKeyCombination: association key toAction: association value ]
 ]
 
 { #category : #'api-focus' }
@@ -417,13 +428,13 @@ ComposablePresenter >> eventKeyStrokesForPreviousFocus [
 	^ keyStrokesForPreviousFocusHolder value
 ]
 
-{ #category : #TOMOVE }
+{ #category : #api }
 ComposablePresenter >> extent [
 
 	^  extentHolder value
 ]
 
-{ #category : #TOMOVE }
+{ #category : #api }
 ComposablePresenter >> extent: aPoint [
 
 	^  extentHolder value: aPoint
@@ -445,7 +456,26 @@ ComposablePresenter >> giveFocusToNextFrom: aModel [
 	| focus |
 	
 	focus := self focusOrder.
-	^ true
+
+	(focus includes: aModel)
+		ifTrue: [
+			| index next |
+			index := (focus indexOf: aModel) + 1.
+			(index <= focus size)
+				ifTrue: [
+					next := focus at: index.
+					next takeKeyboardFocus.
+					^ true ]].
+
+	^ owner 
+		ifNil: [ " I loop "
+			| next |
+			next := focus at: 1 ifAbsent: [ ^ false ].
+			next takeKeyboardFocus.
+			true ]
+		ifNotNil: [ 
+			owner giveFocusToNextFrom: self.
+			true ]
 ]
 
 { #category : #'private-focus' }
@@ -481,19 +511,27 @@ ComposablePresenter >> handlesKeyboard: evt [
 	^ true
 ]
 
+{ #category : #testing }
+ComposablePresenter >> hasWindow [
+	"Answers true if there is an open window using this model."
+
+	self owner ifNil: [ ^ self window ifNotNil: [ :w | w isClosed not ] ifNil: [ false ] ].
+	 ^ self owner hasWindow
+]
+
 { #category : #api }
 ComposablePresenter >> hide [
 
-	visible := false
+	self widget ifNotNil: [:widget |
+		(widget respondsTo: #hide) ifTrue: [ widget hide ]].
 ]
 
 { #category : #accessing }
 ComposablePresenter >> iconNamed: aSymbol [
-
 	^ self class iconNamed: aSymbol
 ]
 
-{ #category : #'api-window' }
+{ #category : #api }
 ComposablePresenter >> initialExtent [
 
 	^ nil
@@ -504,25 +542,28 @@ ComposablePresenter >> initialize [
 
 	super initialize.
 
-	visible := true.
-	additionalSubpresentersMap := nil.
-
 	self initializePrivateAnnouncer.
 	self initializePrivateValueHolders.
+	
 	self initializePrivateHooks.
-	self initializePrivateAnnouncements
+		
+	self initializePrivateAnnouncements.
+]
+
+{ #category : #initialization }
+ComposablePresenter >> initializeDialogWindow: aWindow [
+	"used to initialize the model in the case of the use into a dialog window"
 ]
 
 { #category : #initialization }
 ComposablePresenter >> initializePresenter [
 	"Used to specify the subwidgets, and/or to bind them together"
-
 	"By default, do not do anything"
-
-	extentHolder whenChangedDo: [ :ex | 
-		self withAdapterDo: [ :widget | 
+	
+	extentHolder whenChangedDo: [:ex | 
+		self widget ifNotNil: [:widget |
 			(widget respondsTo: #extent:)
-				ifTrue: [ widget extent: ex ] ] ]
+				ifTrue: [ widget extent: ex ]]].
 ]
 
 { #category : #'initialization - private' }
@@ -553,10 +594,13 @@ ComposablePresenter >> initializePrivateHooks [
 ComposablePresenter >> initializePrivateValueHolders [
 
 	extentHolder := nil asValueHolder.
+	needRebuild := true asValueHolder.
 	keyStrokesForNextFocusHolder := { KMNoShortcut new } asValueHolder.
 	keyStrokesForPreviousFocusHolder := { KMNoShortcut new } asValueHolder.
+	additionalKeyBindings := Dictionary new.
 	aboutText := nil asValueHolder.
 	windowIcon := nil asValueHolder.
+	window := nil asValueHolder.
 	askOkToClose := false asValueHolder.
 	titleHolder := self class title asValueHolder.
 	
@@ -567,19 +611,6 @@ ComposablePresenter >> initializePrivateValueHolders [
 ComposablePresenter >> initializeWidgets [
 	
 	self subclassResponsibility
-]
-
-{ #category : #initialization }
-ComposablePresenter >> initializeWindow: aWindowPresenter [
-	"override this to set window values before opening. 
-	 You may want to add a menu, a toolbar or a statusbar"
-	
-	aWindowPresenter 
-		title: self title;
-		initialExtent: self initialExtent;
-		windowIcon: self windowIcon;
-		askOkToClose: self askOkToClose;
-		aboutText: self aboutText
 ]
 
 { #category : #'instance creation' }
@@ -615,16 +646,7 @@ ComposablePresenter >> instantiatePresenters: aCollectionOfPairs [
 ComposablePresenter >> isDisplayed [
 	"Return true if the widget is currently displayed on screen"
 	
-	self flag: #TODO. "To move to WindowPresenter exclusive?"
-	^ self hasWindow 
-		ifTrue: [ self root isDisplayed ]
-		ifFalse: [ false ]
-]
-
-{ #category : #testing }
-ComposablePresenter >> isVisible [
-	
-	^ visible value
+	^ self window notNil and: [ self window isDisplayed ]
 ]
 
 { #category : #'api-focus' }
@@ -652,34 +674,29 @@ ComposablePresenter >> keyStrokesForPreviousFocus: aCollection [
 ]
 
 { #category : #accessing }
-ComposablePresenter >> layout [
-	^ layout
+ComposablePresenter >> needRebuild [
+
+	^ needRebuild value
 ]
 
-{ #category : #'window menu' }
+{ #category : #accessing }
+ComposablePresenter >> needRebuild: aBoolean [
+
+	needRebuild value: aBoolean
+]
+
+{ #category : #api }
 ComposablePresenter >> neglectMenuModel: aMenuModel [
 
 	aMenuModel menuGroups do: [ :group |
 		group menuItems do: [ :item |
-			item shortcut ifNotNil: [ :shortcut | self removeKeyCombination: shortcut ].
+			item shortcut ifNotNil: [ :shortcut | self removeMenuKeyCombination: shortcut ].
 			item subMenu ifNotNil: [ :subMenu | subMenu neglect: self	] ] ]
-]
-
-{ #category : #widgets }
-ComposablePresenter >> newActionBar [
-
-	^ self instantiate: ActionBarPresenter
 ]
 
 { #category : #widgets }
 ComposablePresenter >> newButton [
 	^ self instantiate: ButtonPresenter
-]
-
-{ #category : #widgets }
-ComposablePresenter >> newButtonBar [
-
-	^ self instantiate: ButtonBarPresenter
 ]
 
 { #category : #widgets }
@@ -689,7 +706,9 @@ ComposablePresenter >> newCheckBox [
 
 { #category : #widgets }
 ComposablePresenter >> newCode [
-	^ self instantiate: CodePresenter
+	^ (self instantiate: TextPresenter)
+		beForCode;
+		yourself
 ]
 
 { #category : #widgets }
@@ -719,6 +738,11 @@ ComposablePresenter >> newDynamicPresentersListIn: accessorSymbol usingBuilder: 
 ]
 
 { #category : #widgets }
+ComposablePresenter >> newIconList [
+	^ self instantiate: IconListPresenter
+]
+
+{ #category : #widgets }
 ComposablePresenter >> newImage [
 	^ self instantiate: ImagePresenter
 ]
@@ -729,51 +753,18 @@ ComposablePresenter >> newLabel [
 ]
 
 { #category : #widgets }
-ComposablePresenter >> newLink [
-	^ self instantiate: LinkPresenter
-]
-
-{ #category : #widgets }
 ComposablePresenter >> newList [
-	^ self instantiate: ListPresenter
+	^ self instantiate: FastTablePresenter
 ]
 
 { #category : #widgets }
-ComposablePresenter >> newMenu [
-	^ self instantiate: MenuPresenter
-]
-
-{ #category : #widgets }
-ComposablePresenter >> newMenuBar [
-	^ self instantiate: MenuBarPresenter
-]
-
-{ #category : #widgets }
-ComposablePresenter >> newNotebook [
-
-	^ self instantiate: NotebookPresenter
-]
-
-{ #category : #widgets }
-ComposablePresenter >> newNotebookPage [
-
-	self flag: #TODO. "NotebookPage needs to be a Presenter?"
-	^ NotebookPage new
+ComposablePresenter >> newMultiColumnList [
+	^ self instantiate: MultiColumnListPresenter
 ]
 
 { #category : #widgets }
 ComposablePresenter >> newNullPresenter [
 	^ self instantiate: NullPresenter
-]
-
-{ #category : #widgets }
-ComposablePresenter >> newNumberInput [
-	^ self instantiate: NumberInputFieldPresenter
-]
-
-{ #category : #widgets }
-ComposablePresenter >> newProgressBar [
-	^ self instantiate: ProgressBarPresenter
 ]
 
 { #category : #widgets }
@@ -787,9 +778,13 @@ ComposablePresenter >> newSlider [
 ]
 
 { #category : #widgets }
-ComposablePresenter >> newTable [
+ComposablePresenter >> newTab [
+	^ self instantiate: TabPresenter
+]
 
-	^ self instantiate: TablePresenter
+{ #category : #widgets }
+ComposablePresenter >> newTabManager [
+	^ self instantiate: TabManagerPresenter
 ]
 
 { #category : #widgets }
@@ -803,32 +798,23 @@ ComposablePresenter >> newTextInput [
 ]
 
 { #category : #widgets }
-ComposablePresenter >> newToolBar [
-
-	^ self instantiate: ToolBarPresenter
-]
-
-{ #category : #widgets }
-ComposablePresenter >> newTreeTable [
-
-	^ self instantiate: TreeTablePresenter
+ComposablePresenter >> newTree [
+	^ self instantiate: TreePresenter
 ]
 
 { #category : #private }
 ComposablePresenter >> okToChange [
 
-	^ self hasWindow
-		ifTrue: [ self window okToChange ]
-		ifFalse: [ true ] 
+	^ owner 
+		ifNil: [
+			self canDiscardEdits ifTrue: [^ true].
+			self changed: #wantToChange.  "Solicit cancel from view"
+			^ self canDiscardEdits]
+		ifNotNil: [ owner okToChange ]
 ]
 
 { #category : #'api-shortcuts' }
 ComposablePresenter >> on: aShortcut do: aBlock [
-
-	self 
-		deprecated: 'Use #bindKeyCombination:toAction: instead.' 
-		transformWith: '`@receiver on: `@statements1 do: `@statements2' 
-						-> '`@receiver bindKeyCombination: `@statements1 toAction: `@statements2'.
 
 	self bindKeyCombination: aShortcut toAction: aBlock
 ]
@@ -842,41 +828,98 @@ ComposablePresenter >> on: anAnnouncement send: aSelector to: aTarget [
 		to: aTarget
 ]
 
-{ #category : #accessing }
-ComposablePresenter >> presenterAt: aName [
-	"Retrieves a subpresenter of this composed presenter."
+{ #category : #api }
+ComposablePresenter >> openDialogWithSpec [
+	"Build the widget using the default spec and display it into a window"
 
-	^ self readSlotNamed: aName
+	^ self openDialogWithSpec: self defaultSpecSelector.
+]
+
+{ #category : #api }
+ComposablePresenter >> openDialogWithSpec: aSpec [
+	"Build the widget using the spec name provided as argument and display it into a window"
+
+	^ self openDialogWithSpecLayout: (self retrieveSpec: aSpec)
+]
+
+{ #category : #api }
+ComposablePresenter >> openDialogWithSpecLayout: aSpec [
+	"Build the widget using the spec name provided as argument and display it into a window"
+
+	(window value notNil and: [ self needRebuild not ])
+		ifTrue: [
+			window value rebuildWithSpec: aSpec ]
+		ifFalse: [
+			window value: (DialogWindowPresenter new model: self).
+			window value openWithSpecLayout: aSpec.
+			self initializeDialogWindow: window value.
+			window value updateTitle.
+			self takeKeyboardFocus ].
+		
+	^ window value
+]
+
+{ #category : #api }
+ComposablePresenter >> openWithSpec [
+	"Build the widget using the default spec and display it into a window"
+
+	^ self openWithSpec: self defaultSpecSelector.
+]
+
+{ #category : #api }
+ComposablePresenter >> openWithSpec: aSpec [
+	"Build the widget using the spec name provided as argument and display it into a window"
+
+	^ self openWithSpecLayout: (self retrieveSpec: aSpec)
+]
+
+{ #category : #api }
+ComposablePresenter >> openWithSpecLayout: aSpec [
+	"Build the widget using the spec name provided as argument and display it into a window"
+
+	(window value notNil and: [ self needRebuild not ])
+		ifTrue: [
+			window value rebuildWithSpecLayout: aSpec ]
+		ifFalse: [ 
+			window value: (self defaultWindowModelClass new model: self).
+			window value openWithSpecLayout: aSpec.
+			self takeKeyboardFocus ].
+		
+	^ window value
 ]
 
 { #category : #accessing }
-ComposablePresenter >> presenterAt: aName ifAbsent: aBlock [
-	"Retrieves a subpresenter of this composed presenter."
+ComposablePresenter >> owner [
 
-	^ [ self readSlotNamed: aName ]
-		on: SlotNotFound
-		do: aBlock
+	^ owner
 ]
 
-{ #category : #'private-traversing' }
-ComposablePresenter >> presenters [
-	| allPresenters |
+{ #category : #accessing }
+ComposablePresenter >> owner: anObject [
 
-	allPresenters := OrderedCollection new.
-	self presentersDo: [ :each | 
-		allPresenters add: each ].
-	^ allPresenters
+	owner := anObject.
 ]
 
-{ #category : #'private-traversing' }
-ComposablePresenter >> presentersDo: aBlock [
+{ #category : #private }
+ComposablePresenter >> privateAdapterFromModel: aModel withSpec: aSpec [
+	"apparently when looking at the implementation, it does not return a widget but an adapter so it should be called adapter :)"
+	^ SpecInterpreter private_buildWidgetFor: self withSpec: aSpec.
+]
 
-	self class allSlots 
-		reject: [ :each | each name = #owner ] 
-		thenDo: [ :each | | var |
-			var := self readSlot: each.
-			(var isKindOf: Presenter) ifTrue: [ 
-				aBlock value: var ] ]
+{ #category : #private }
+ComposablePresenter >> private_buildWithSpec [
+	"Build the widget using the default spec"
+	
+	^ self private_buildWithSpec: self defaultSpecSelector
+]
+
+{ #category : #private }
+ComposablePresenter >> private_buildWithSpec: aSpec [
+	"Build the widget using the spec name provided as argument"
+	| adapter |
+	adapter := self privateAdapterFromModel: self withSpec: aSpec.
+	self setExtentAndBindingTo: adapter widget.	
+	^ adapter
 ]
 
 { #category : #'private-focus' }
@@ -900,20 +943,24 @@ ComposablePresenter >> registerKeyStrokesForPreviousFor: aWidget [
 { #category : #'api-shortcuts' }
 ComposablePresenter >> removeKeyCombination: aShortcut [
 
-	self additionalKeyBindings removeKey: aShortcut ifAbsent: [ ^ self ].
-	self withAdapterDo: [ :anAdapter | 
-		anAdapter removeKeyCombination: aShortcut ]
-]
-
-{ #category : #'api-window' }
-ComposablePresenter >> requestWindowClose [
-
-	"returns <true> if the user is allowed to close the window. Useful if you want to ask user if he wants to save the changed content etc."
+	additionalKeyBindings 
+		removeKey: aShortcut 
+		ifAbsent: [ ^ self ].
 	
-	^ true
+	self changed: #removeKeyCombination: with: { aShortcut }
 ]
 
-{ #category : #private }
+{ #category : #'api-shortcuts' }
+ComposablePresenter >> removeMenuKeyCombination: aShortcut [
+
+	additionalKeyBindings 
+		removeKey: aShortcut 
+		ifAbsent: [ ^ self ].
+	
+	self changed: #removeMenuKeyCombination: with: { aShortcut }
+]
+
+{ #category : #'instance creation' }
 ComposablePresenter >> resolveSymbol: aSymbol [
 
 	^ Smalltalk at: aSymbol
@@ -921,38 +968,35 @@ ComposablePresenter >> resolveSymbol: aSymbol [
 
 { #category : #api }
 ComposablePresenter >> retrieveSpec: aSelector [
-
-	self layout ifNotNil: [ ^ self layout ].
-	^ super retrieveSpec: aSelector
+	| layout |
+	
+	layout := self class perform: aSelector.
+	layout isSpecLayout ifTrue: [ layout selector: aSelector ].
+	^ layout
 ]
 
-{ #category : #TOMOVE }
+{ #category : #api }
 ComposablePresenter >> setExtentAndBindingTo: widget [
 
-	self flag: #TODO. "This is bad. Extent needs to be 'ensured' at adapter level. 
-	Same for keybindings"
 	self ensureExtentFor: widget.
-	self ensureKeyBindingsFor: widget
+	self ensureKeyBindingsFor: widget.
+	self announce: (WidgetBuilt model: self widget: widget).
+	
 ]
 
-{ #category : #'api-showing' }
-ComposablePresenter >> setModal: aWindow [
-
-	self 
-		deprecated: 'Do not use this directly. Use #openModalWithSpec (and family) instead.' 
-		on: '2019-02-26' 
-		in: #Pharo8.
+{ #category : #api }
+ComposablePresenter >> setModal: aWindow [ 
 	
 	self changed: #setModal: with: { aWindow }
 ]
 
-{ #category : #'accessing model' }
+{ #category : #'model access' }
 ComposablePresenter >> setModel: aDomainObject [
 
 
 ]
 
-{ #category : #'accessing model' }
+{ #category : #'model access' }
 ComposablePresenter >> setModelBeforeInitialization: aDomainObject [
 
 
@@ -961,13 +1005,27 @@ ComposablePresenter >> setModelBeforeInitialization: aDomainObject [
 { #category : #api }
 ComposablePresenter >> show [
 
-	visible := true
+	self widget ifNotNil: [:widget |
+		(widget respondsTo: #show) ifTrue: [ widget show ]].
 ]
 
-{ #category : #TOREMOVE }
-ComposablePresenter >> specSpacer [
+{ #category : #accessing }
+ComposablePresenter >> spec [
 
-	^ SpacerPresenter new
+	^ spec
+]
+
+{ #category : #accessing }
+ComposablePresenter >> spec: aSpec [
+
+	spec := aSpec
+]
+
+{ #category : #api }
+ComposablePresenter >> specSelectors [
+	"Return all the spec names"
+	
+	^ self class specSelectors
 ]
 
 { #category : #'private-focus' }
@@ -985,44 +1043,23 @@ ComposablePresenter >> takeLastKeyboardFocus [
 		ifNotEmpty: [:focus | focus last takeKeyboardFocus ].
 ]
 
-{ #category : #'api-window' }
+{ #category : #api }
 ComposablePresenter >> title [
 	"Return the window's title"
 
 	^ titleHolder value
 ]
 
-{ #category : #'api-window' }
+{ #category : #api }
 ComposablePresenter >> title: aString [
 
 	titleHolder value: aString
 ]
 
-{ #category : #TOREMOVE }
-ComposablePresenter >> toolName [
+{ #category : #private }
+ComposablePresenter >> update: aParameter [
 
-	^ self class toolName
-]
-
-{ #category : #'private-traversing' }
-ComposablePresenter >> traversePresentersDo: aBlock [
-
-	self 
-		traversePresentersDo: aBlock 
-		excluding: Set new
-]
-
-{ #category : #'private-traversing' }
-ComposablePresenter >> traversePresentersDo: aBlock excluding: excludes [
-
-	(excludes includes: self) ifTrue: [ ^ self ]. 
-	excludes add: self.
-	aBlock value: self.
-
-	self class allSlots do: [ :each | | var |
-		var := self readSlot: each.
-		(var isKindOf: Presenter) ifTrue: [ 
-			var traversePresentersDo: aBlock excluding: excludes ] ]
+	self changed: aParameter
 ]
 
 { #category : #initialization }
@@ -1031,48 +1068,47 @@ ComposablePresenter >> updatePresenter [
 
 { #category : #api }
 ComposablePresenter >> updateTitle [
-
-	self flag: #TODO. "To move to WindowPresenter"
 	"Update the window title"
-	self withWindowDo: #updateTitle
+
+	self window ifNotNil: [:w | w updateTitle ]
 ]
 
-{ #category : #api }
-ComposablePresenter >> visibleIf: aValuable [
-	visible := aValuable
+{ #category : #'api-events' }
+ComposablePresenter >> whenBuiltDo: aBlock [
+
+	self announcer 
+		when: WidgetBuilt
+		do: aBlock
 ]
 
 { #category : #'api-events' }
 ComposablePresenter >> whenShortcutsChanged: aBlock [
 	"Set a block to value when the shortcuts block has changed"
-	
-	self additionalKeyBindings whenChangedDo: aBlock
+	additionalKeyBindings whenChangedDo: aBlock
 ]
 
 { #category : #'api-events' }
-ComposablePresenter >> whenVisibleChangedDo: aBlock [
-	
-	self property: #visible whenChangedDo: aBlock
-]
-
-{ #category : #'api-window' }
 ComposablePresenter >> whenWindowChanged: aBlock [
 
-	self flag: #TODO. "This is here for backwards compatibility (you can have same 
-	functionality in #initializeWindow:"
-	self announcer 
-		when: WindowBuilt 
-		do: [ :ann | aBlock cull: ann model ]
+	window whenChangedDo: aBlock
 ]
 
 { #category : #accessing }
 ComposablePresenter >> widget [
-	"I return the adapter responsible of building my widget"
-	
-	self deprecated: 'Should use #adapter instead'
-		transformWith: '`@receiver widget' -> '`@receiver adapter'.
-	
-	^ self spec
+
+	^ spec
+		ifNil: [ nil ]
+		ifNotNil: [:s | s instance ]
+]
+
+{ #category : #accessing }
+ComposablePresenter >> window [
+
+	^ window value
+		ifNil: [
+			owner
+				ifNil: [ nil ]
+				ifNotNil: [:o | o window ]]
 ]
 
 { #category : #api }

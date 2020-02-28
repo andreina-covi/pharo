@@ -1,7 +1,7 @@
 "
-A RBComment represents a text comment associated to an AST node.
+An RBComment represents a text comment associated with an AST node.
 
-A RBComment is not an AST-Node (not subclass of program node). But its instance are just wrapping the comment text and (start-) position.
+An RBComment is not an AST-Node (not a subclass of program node). But its instances are just wrapping the comment text and (start-) position.
 
 Due to the way the parser handles comments, the RBComment is assigned to its preceding (real) AST node, although we often write the comment prior to a statement.
 
@@ -42,11 +42,13 @@ RBComment class >> with: aString at: startPosition [
 ]
 
 { #category : #visiting }
-RBComment >> acceptVisitor: aProgramNodeVisitor [ 
+RBComment >> acceptVisitor: aProgramNodeVisitor [
 	"At some point we will have to think what we do to visit comment. 
 	It may have an impact on visitors so this should be done carefully.
 	Since by default previously comment node were not subclass of ProgramNode 
 	we do nothing by default."
+
+	
 ]
 
 { #category : #accessing }

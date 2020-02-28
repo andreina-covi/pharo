@@ -6,7 +6,8 @@ Class {
 	#superclass : #Object,
 	#instVars : [
 		'defaultKeymappingIndex',
-		'textArea'
+		'textArea',
+		'findReplaceService'
 	],
 	#category : #'Rubric-Editing-Core'
 }
@@ -1105,14 +1106,14 @@ RubTextEditor >> find: aKeyboardEvent [
 
 { #category : #'menu messages' }
 RubTextEditor >> findAgain [
-	"Find the text-to-find again."
-	| where |
-	where := self findReplaceService findNext.
-	where isNil
-		ifTrue: [self flash]
-		ifFalse: [ self selectInterval: where].
-	^ where
 
+	"Find the text-to-find again."
+
+	| where |
+
+	where := self findReplaceService findNext.
+	where ifNil: [ self flash ] ifNotNil: [ self selectInterval: where ].
+	^ where
 ]
 
 { #category : #'typing/selecting keys' }
@@ -1125,13 +1126,14 @@ RubTextEditor >> findAgain: aKeyboardEvent [
 
 { #category : #'menu messages' }
 RubTextEditor >> findAgainAndReplace [
-	"Find the text-to-find again and eventually replace it with the current replace text."
-	| where |
-	where := self findAgain.
-	where isNil
-		ifFalse: [self findReplaceService replaceText 
-				ifNotEmpty: [:rt | self replaceSelectionWith: rt]]
 
+	"Find the text-to-find again and eventually replace it with the current replace text."
+
+	| where |
+
+	where := self findAgain.
+	where
+		ifNotNil: [ self findReplaceService replaceText ifNotEmpty: [ :rt | self replaceSelectionWith: rt ] ]
 ]
 
 { #category : #'find-select' }
@@ -1173,9 +1175,11 @@ RubTextEditor >> findAndSelectNextOccurenceOf: aRegex [
 
 { #category : #'find-select' }
 RubTextEditor >> findAndSelectPreviousOccurenceOf: aRegex [
+
 	| where |
+
 	where := self findPrevious: aRegex startingAt: self startIndex.
-	where isNil ifFalse: [self selectInterval: where].
+	where ifNotNil: [ self selectInterval: where ].
 	^ where
 ]
 
@@ -1213,7 +1217,7 @@ RubTextEditor >> findRegex [
 
 { #category : #'find-select' }
 RubTextEditor >> findReplaceService [
-	^ RubFindReplaceService default
+	^ self textArea findReplaceService
 ]
 
 { #category : #'find-select' }
@@ -1470,6 +1474,11 @@ RubTextEditor >> isDisjointFrom: anInterval [
 	^(anInterval last + fudge < self startIndex or:
 			[anInterval first - fudge >= self stopIndex])
 
+]
+
+{ #category : #testing }
+RubTextEditor >> isScripting [
+	^ false 
 ]
 
 { #category : #testing }
@@ -1990,11 +1999,8 @@ RubTextEditor >> saveContentsInFile [
 	suggestedName ifNil: [suggestedName := labelToUse , '.text'].
 	fileName := UIManager default request: 'File name?'
 				initialAnswer: suggestedName.
-	fileName isEmptyOrNil 
-		ifFalse: 
-			[(FileStream newFileNamed: fileName)
-				nextPutAll: stringToSave;
-				close]
+	fileName isEmptyOrNil
+		ifFalse: [ fileName asFileReference writeStreamDo: [ :out | out nextPutAll: stringToSave ] ]
 ]
 
 { #category : #scrolling }
@@ -2171,6 +2177,12 @@ RubTextEditor >> selectWord [
 									ifTrue: [level := level + 1"entering deeper nest"]]]].
 
 	level > 0 ifTrue: ["in case ran off string end"	here := here + direction].
+	
+	"to avoid selecting boringly the : in block argument: :aSerie will just select aSerie. 
+	Such a boost of editing productivity!!!"	
+	start ifNotNil: [ (self text at: start) = $: ifTrue: [ start := start + 1 ]].
+	
+	
 	direction > 0
 		ifTrue: [self selectFrom: start to: here - 1]
 		ifFalse: [self selectFrom: here + 1 to: stop]

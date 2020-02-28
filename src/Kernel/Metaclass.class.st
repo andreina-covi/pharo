@@ -71,7 +71,7 @@ Metaclass >> binding [
 	"return an association that can be used as the binding
 	 To share it between methods, reuse an existing one if possible"
 	^self methodDict 
-		ifEmpty: [nil -> self]
+		ifEmpty: [LiteralVariable key: nil value: self]
 		ifNotEmpty: [:dict | dict anyOne classBinding]
 ]
 
@@ -104,31 +104,53 @@ Metaclass >> classSide [
 
 { #category : #'accessing instances and variables' }
 Metaclass >> classVarNames [
-	"Answer a set of the names of the class variables defined in the receiver's instance."
+	"Answer the names of the class variables defined in the receiver's instance."
 	
-	self instanceSide ifNil: [ ^ Set new ].
-	^self instanceSide classVarNames
+	^self instanceSide 
+		ifNil: [ #() ]
+		ifNotNil: [ :class | class classVarNames ]
 ]
 
-{ #category : #'fileIn/Out' }
+{ #category : #'class variables' }
+Metaclass >> classVariables [
+	"Answer the class variables defined in the receiver's instance."
+
+	^ self instanceSide
+		ifNil: [ #() ]
+		ifNotNil: [ :class | class classVariables ]
+]
+
+{ #category : #'file in/out' }
 Metaclass >> definition [
 	"Refer to the comment in ClassDescription|definition."
 
-	^ String streamContents: 
-		[:strm |
-		strm print: self.
-		
-		(self slotsNeedFullDefinition or: [ Slot showSlotClassDefinition ])
-			ifFalse: [  
-						strm
-							crtab;
-							nextPutAll: 'instanceVariableNames: ';
-							store: self instanceVariablesString]
-			ifTrue: [ 
-						strm
-							crtab;
-							nextPutAll: 'slots: ';
-							nextPutAll: self slotDefinitionString]]
+	(self slotsNeedFullDefinition or: [ Slot showSlotClassDefinition ]) ifTrue: [ 
+		^ self definitionWithSlots ].
+
+	^ self definitionWithoutSlots
+]
+
+{ #category : #'file in/out' }
+Metaclass >> definitionWithSlots [
+	"Refer to the comment in ClassDescription|definition."
+
+	^ String streamContents: [:stream |
+		stream print: self.
+		stream
+			crtab;
+			nextPutAll: 'slots: ';
+			nextPutAll: self slotDefinitionString ]
+]
+
+{ #category : #'file in/out' }
+Metaclass >> definitionWithoutSlots [
+
+	^ String streamContents: [:stream |
+		stream print: self.
+		stream
+			crtab;
+			nextPutAll: 'instanceVariableNames: ';
+			store: self instanceVariablesString ]
 ]
 
 { #category : #accessing }
@@ -209,12 +231,11 @@ Metaclass >> isUsed [
 
 { #category : #accessing }
 Metaclass >> name [
+
 	"Answer a String that is the name of the receiver, either 'Metaclass' or 
 	the name of the receiver's class followed by ' class'."
 
-	^ thisClass isNil
-		ifTrue: [ 'a Metaclass' ]
-		ifFalse: [ thisClass name asString, ' class' ]
+	^ thisClass ifNil: [ 'a Metaclass' ] ifNotNil: [ thisClass name asString , ' class' ]
 ]
 
 { #category : #'instance creation' }
@@ -239,6 +260,14 @@ Metaclass >> obsoleteSubclasses [
 
 	self isMetaclassOfClassOrNil ifTrue: [ ^ #() ].
 	^ self instanceSide obsoleteSubclasses collect: [ :aSubclass | aSubclass classSide ]
+]
+
+{ #category : #'file in/out' }
+Metaclass >> oldDefinition [
+	"Refer to the comment in ClassDescription|definition.
+	 This method is for compatibility with Class>>#oldDefinition"
+
+	^ self definition
 ]
 
 { #category : #compiling }
@@ -266,6 +295,11 @@ Metaclass >> removeSlot: aClassSlot [
 { #category : #'class hierarchy' }
 Metaclass >> removeSubclass: aClass [
 	"Do nothing."
+]
+
+{ #category : #'pool variables' }
+Metaclass >> sharedPoolNames [
+	^#()
 ]
 
 { #category : #'pool variables' }
@@ -333,11 +367,4 @@ Metaclass >> wantsChangeSetLogging [
 	"Answer whether code submitted for the receiver should be remembered by the changeSet mechanism.The metaclass follows the rule of the class itself."
 
 	^ self instanceSide wantsChangeSetLogging
-]
-
-{ #category : #compiling }
-Metaclass >> wantsRecompilationProgressReported [
-	"The metaclass follows the rule of the class itself."
-
-	^ self instanceSide wantsRecompilationProgressReported
 ]

@@ -1,6 +1,6 @@
 Class {
 	#name : #RBRefactoringChangeTest,
-	#superclass : #TestCase,
+	#superclass : #AbstractEnvironmentTestCase,
 	#instVars : [
 		'changes',
 		'workingEnvironment',
@@ -16,7 +16,7 @@ RBRefactoringChangeTest class >> packageNamesUnderTest [
 
 { #category : #mocking }
 RBRefactoringChangeTest >> changeMock [
-	^ Smalltalk globals at: #RBRefactoringChangeMock
+	^ testingEnvironment at: #RBRefactoringChangeMock
 ]
 
 { #category : #mocking }
@@ -73,7 +73,7 @@ RBRefactoringChangeTest >> perform: aChange do: aBlock [
 
 { #category : #mocking }
 RBRefactoringChangeTest >> removeMockClass [
-	Smalltalk globals removeClassNamed: #RBRefactoringChangeMock.
+	testingEnvironment removeClassNamed: #RBRefactoringChangeMock.
 ]
 
 { #category : #mocking }
@@ -120,11 +120,11 @@ RBRefactoringChangeTest >> testAddClassInstanceVariable [
 { #category : #tests }
 RBRefactoringChangeTest >> testAddClassInteractively [
 	| change |
-	change := changeFactory addClassDefinition: 'TestCase subclass: #' , self class name , '
+	change := changeFactory addClassDefinition: 'AbstractEnvironmentTestCase subclass: #' , self class name , '
 	instanceVariableNames: ''instVar''
 	classVariableNames: ''ClassVar''
 	poolDictionaries: ''PoolDict''
-	category: ''' , self class category , '''' for: self.
+	package: ''' , self class category , '''' for: self.
 	self assert: change controller equals: self.
 	self assert: change superclassName equals: self class superclass name.
 	self assert: change changeClassName equals: self class name.
@@ -142,24 +142,29 @@ RBRefactoringChangeTest >> testAddClassInteractively [
 
 { #category : #'tests-pattern' }
 RBRefactoringChangeTest >> testAddClassPattern [
+
 	"Make sure that all class definitions can be parsed."
 
-	self exampleClasses do: [ :class |
-		(class isObsolete or: [ class superclass notNil and: [ class superclass isObsolete ] ]) ifFalse: [
-			| change |
-			change := changes defineClass: class definition.
-			self assert: (change isKindOf: RBAddClassChange).
-			self assert: change changeClassName equals: class name.
+	self exampleClasses
+		do: [ :class | 
+			( class isObsolete or: [ class superclass notNil and: [ class superclass isObsolete ] ] )
+				ifFalse: [ | change |
 
-			class superclass isNil
-				ifTrue: [ self assert: change definitionClass equals: ProtoObject ]
-				ifFalse: [ self assert: change definitionClass equals: class superclass ].
+					change := changes defineClass: class oldDefinition.
+					self assert: ( change isKindOf: RBAddClassChange ).
+					self assert: change changeClassName equals: class name.
 
-			self assert: change instanceVariableNames equals: class instVarNames asArray.
-			self assert: change classVariableNames equals: class classVarNames asArray.
-			self assert: change sharedPoolNames equals: class sharedPoolNames asArray.
-			self assert: change category equals: class category.
-			self universalTestFor: change ] ]
+					class superclass
+						ifNil: [ self assert: change definitionClass equals: ProtoObject ]
+						ifNotNil: [ self assert: change definitionClass equals: class superclass ].
+
+					self assert: change instanceVariableNames equals: class instVarNames asArray.
+					self assert: change classVariableNames equals: class classVarNames asArray.
+					self assert: change sharedPoolNames equals: class sharedPoolNames asArray.
+					self assert: change category equals: class category.
+					self universalTestFor: change
+					]
+			]
 ]
 
 { #category : #'tests-pattern' }
@@ -320,7 +325,7 @@ RBRefactoringChangeTest >> testPerformAddRemoveClass [
 	instanceVariableNames: ''''
 	classVariableNames: ''''
 	poolDictionaries: ''''
-	category: ''' , self class category , ''''.
+	package: ''' , self class category , ''''.
 	self perform: change do: [
 		self assert: (workingEnvironment  hasClassNamed: change changeClassName).
 		self assert: change definedClass name equals: change changeClassName.
@@ -344,7 +349,7 @@ RBRefactoringChangeTest >> testPerformAddRemoveClassInteractively [
 	instanceVariableNames: ''''
 	classVariableNames: ''''
 	poolDictionaries: ''''
-	category: ''' , self class category , '''' for: self.
+	package: ''' , self class category , '''' for: self.
 	self perform: change do: [ 
 		self assert: (workingEnvironment hasClassNamed: change changeClassName).
 		self assert: change definedClass name equals: change changeClassName.

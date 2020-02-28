@@ -27,6 +27,23 @@ Class {
 	#category : #'TraitsV2-Base'
 }
 
+{ #category : #private }
+Trait class >> configureBuilder: builder withName: aName traitComposition: aTraitCompositionOrCollection slots: someSlots packageName: aPackageName [
+
+	^ builder
+		name: aName;
+		superclass: nil;
+		metaSuperclass: self;
+		metaclassClass: MetaclassForTraits;
+		slots: someSlots;
+		sharedVariables: '';
+		sharedPools: '';
+		category: aPackageName;
+		traitComposition: aTraitCompositionOrCollection asTraitComposition;
+		classTraitComposition: aTraitCompositionOrCollection asTraitComposition classComposition;
+		classSlots: #()
+]
+
 { #category : #'instance creation' }
 Trait class >> named: aSymbol [
 	^ self named: aSymbol uses: {} package: 'Unclassified'
@@ -103,26 +120,18 @@ Trait class >> named: aName uses: aTraitCompositionOrCollection slots: someSlots
 ]
 
 { #category : #'instance creation' }
-Trait class >> named: aName uses: aTraitCompositionOrCollection slots: someSlots package: aPackageName env: anEnvironment [ 
-
+Trait class >> named: aName uses: aTraitCompositionOrCollection slots: someSlots package: aPackageName env: anEnvironment [
 	| trait |
-	trait:= self classInstaller
+	trait := self classInstaller
 		make: [ :builder | 
-			builder
-				name: aName;
-				superclass: nil;
-				metaSuperclass: self;
-				slots: someSlots;
-				sharedVariables: '';
-				sharedPools: '';
-				category: aPackageName;
-				traitComposition: aTraitCompositionOrCollection asTraitComposition;
-				classTraitComposition: aTraitCompositionOrCollection asTraitComposition classComposition;
-				classSlots: #() ].
-			
+			self
+				configureBuilder: builder
+				withName: aName
+				traitComposition: aTraitCompositionOrCollection
+				slots: someSlots
+				packageName: aPackageName ].
 	self assert: [ trait class class = MetaclassForTraits ].
 	self assert: [ trait class superclass = Trait ].
-	
 	^ trait
 ]
 
@@ -140,6 +149,12 @@ Trait >> - anArray [
 ]
 
 { #category : #accessing }
+Trait >> -- aSlotName [
+
+	^ self asTraitComposition -- aSlotName
+]
+
+{ #category : #accessing }
 Trait >> @ anArray [
 	"I return myself with an aliased method. Check TaAbstractComposition >> #@ for more details"
 	^ self asTraitComposition @ anArray
@@ -149,12 +164,6 @@ Trait >> @ anArray [
 Trait >> addUser: aClass [ 
 
 	self users add: aClass
-]
-
-{ #category : #'class variables' }
-Trait >> allClassVarNames [
-	
-	^ #()
 ]
 
 { #category : #accessing }
@@ -178,7 +187,7 @@ Trait >> classTrait [
 	^ self class
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Trait >> definition [
 	
 	(self instanceSide name == #Trait) ifTrue: [ ^ super definition ].
@@ -199,22 +208,16 @@ Trait >> definition [
 	]
 ]
 
-{ #category : #accessing }
-Trait >> definitionForNautilus [
-
-	^ self definition
-]
-
-{ #category : #accessing }
-Trait >> definitionForNautilusWithSlots [
-
-	^ self definition
-]
-
 { #category : #testing }
 Trait >> isBaseTrait [
 	
 	^ true
+]
+
+{ #category : #testing }
+Trait >> isClass [
+	
+	^ false
 ]
 
 { #category : #testing }
@@ -243,6 +246,12 @@ Trait >> notifyOfRecategorizedSelector: selector from: oldCategory to: newCatego
 	"When there is a recategorization of a selector, I propagate the changes to my users"
 	super notifyOfRecategorizedSelector: selector from: oldCategory to: newCategory.
 	self traitUsers do: [ :e | e recategorizeSelector: selector from: oldCategory to: newCategory ].
+]
+
+{ #category : #'file in/out' }
+Trait >> oldDefinition [
+
+	^ self definition
 ]
 
 { #category : #'accessing method dictionary' }

@@ -33,12 +33,6 @@ MorphicImageAdapter >> buildWidget [
 		dropEnabled: self dropEnabled;
 		setBalloonText: self help;
 		update: #getImage.
-		
-	self model whenImageChangeDo: [ 
-		(self getImage) 
-			ifNotNil: [ :x | alphaImage image: x ] 
-			ifNil: [ alphaImage image: (Form extent: 1@1 depth: 32)] ].
-		
 	^ alphaImage
 ]
 
@@ -52,12 +46,6 @@ MorphicImageAdapter >> click [
 MorphicImageAdapter >> getImage [
 
 	^ self model image
-]
-
-{ #category : #accessing }
-MorphicImageAdapter >> image [
-	
-	^ widget scaledImage
 ]
 
 { #category : #'widget protocol' }

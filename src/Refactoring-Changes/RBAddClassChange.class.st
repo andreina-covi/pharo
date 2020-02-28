@@ -27,7 +27,17 @@ RBAddClassChange class >> definitionPatterns [
 		'`@superclass variableWordSubclass: `#className instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries category: `#category'
 		'`@superclass variableWordSubclass: `#className uses: `@traitComposition instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries category: `#category'
 		'`@superclass weakSubclass: `#className instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries category: `#category'
-		'`@superclass weakSubclass: `#className uses: `@traitComposition instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries category: `#category')
+		'`@superclass weakSubclass: `#className uses: `@traitComposition instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries category: `#category'
+		'`@superclass subclass: `#className instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries package: `#category'
+		'`@superclass subclass: `#className uses: `@traitComposition instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries package: `#category'
+		'`@superclass variableByteSubclass: `#className instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries package: `#category'
+		'`@superclass variableByteSubclass: `#className uses: `@traitComposition instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries package: `#category'
+		'`@superclass variableSubclass: `#className instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries package: `#category'
+		'`@superclass variableSubclass: `#className uses: `@traitComposition instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries package: `#category'
+		'`@superclass variableWordSubclass: `#className instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries package: `#category'
+		'`@superclass variableWordSubclass: `#className uses: `@traitComposition instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries package: `#category'
+		'`@superclass weakSubclass: `#className instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries package: `#category'
+		'`@superclass weakSubclass: `#className uses: `@traitComposition instanceVariableNames: `#instanceVariableNames classVariableNames: `#classVariableNames poolDictionaries: `#poolDictionaries package: `#category')
 		flatCollect: [ :each | Array with: each with: (each copyReplaceAll: '`@superclass' with: 'ProtoObject') , '. `className superclass: `@superclass' ]
 ]
 
@@ -35,10 +45,10 @@ RBAddClassChange class >> definitionPatterns [
 RBAddClassChange >> asUndoOperation [
 	| class |
 	class := onSystemDictionary 
-					at: self changeClassName
-					ifAbsent: [ nil ].
+					classNamed: self changeClassName.
+
 	^ class isBehavior
-		ifTrue: [ changeFactory addClassDefinition: class definition ]
+		ifTrue: [ changeFactory addClassDefinition: class oldDefinition ]
 		ifFalse: [ changeFactory removeClassNamed: self changeClassName ]
 ]
 
@@ -54,7 +64,7 @@ RBAddClassChange >> classVariableNames [
 
 { #category : #private }
 RBAddClassChange >> definitionClass [
-	^ onSystemDictionary at: (self superclassName ifNil: [ ^ ProtoObject ])
+	^ onSystemDictionary classNamed: (self superclassName ifNil: [ #ProtoObject ])
 ]
 
 { #category : #private }

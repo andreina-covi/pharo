@@ -5,6 +5,29 @@ Class {
 }
 
 { #category : #tests }
+ProcessLocalSlotTest >> testIsPossibleToSetSlotInBlock [
+	| slot writerString instance |
+	slot := #slot1 => ProcessLocalSlot.
+	aClass := self make: [ :builder | builder slots: {slot} ].
+
+	writerString := String streamContents: [ :str |
+		str 
+			nextPutAll: slot name;
+			nextPutAll: ': anObject';
+			cr;tab;
+			nextPutAll: 'true ifTrue: [ ';
+			nextPutAll: slot name;
+			nextPutAll: ':= anObject ]'.
+		].
+	
+	aClass compile: writerString.
+	
+	instance := aClass new.
+	instance slot1: #test.
+	self assert: (instance instVarNamed: #slot1) value equals: #test
+]
+
+{ #category : #tests }
 ProcessLocalSlotTest >> testRead [
 	| slot |
 	slot := #slot1 => ProcessLocalSlot.
@@ -32,7 +55,7 @@ ProcessLocalSlotTest >> testWriteAndReadCompiled [
 	self assert: object slot1 equals: 3.
 	"inside another process it it nil"
 	[ self assert: object slot1 equals: nil. ] fork.
-	self assert: object slot1 equals: 3.
+	self assert: object slot1 equals: 3
 ]
 
 { #category : #tests }
@@ -47,5 +70,5 @@ ProcessLocalSlotTest >> testWriteAndReadReflective [
 	self assert: (slot read: object) equals: 3.
 	"inside another process it it nil"
 	[ self assert: (slot read: object) equals: nil. ] fork.
-	self assert: (slot read: object) equals: 3.
+	self assert: (slot read: object) equals: 3
 ]

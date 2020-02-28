@@ -691,28 +691,32 @@ HaloMorph >> containsPoint: aPoint event: anEvent [
 ]
 
 { #category : #private }
-HaloMorph >> createHandleAt: aPoint color: aColor iconName: iconName [ 
+HaloMorph >> createHandleAt: aPoint color: aColor iconName: iconName [
+
 	| bou handle |
+
 	bou := Rectangle center: aPoint extent: self handleSize asPoint.
 	self gradientHalo
-		ifTrue: [
-			handle := Morph newBounds: bou color: aColor.
+		ifTrue: [ handle := Morph newBounds: bou color: aColor.
 			handle borderWidth: 1.
 			handle useRoundedCorners.
-			self setColor: aColor toHandle: handle]
-		ifFalse: [handle := EllipseMorph newBounds: bou color: aColor].
+			self setColor: aColor toHandle: handle
+			]
+		ifFalse: [ handle := EllipseMorph newBounds: bou color: aColor ].
 	handle borderColor: aColor muchDarker.
 	handle wantsYellowButtonMenu: false.
-	iconName isNil
-		ifFalse: [| form | 
-			form := self iconNamed: iconName.
-			form isNil
-				ifFalse: [| image | 
+	iconName
+		ifNotNil: [ ( self iconNamed: iconName )
+				ifNotNil: [ :form | 
+					| image |
+
 					image := ImageMorph new.
 					image form: form.
 					image color: aColor contrastingBlackAndWhiteColor.
 					image lock.
-					handle addMorphCentered: image]].
+					handle addMorphCentered: image
+					]
+			].
 	^ handle
 ]
 
@@ -801,6 +805,7 @@ HaloMorph >> doGrow: evt with: growHandle [
 	"Called while the mouse is down in the grow handle"
 
 	| newExtent extentToUse scale |
+	growingOrRotating ifFalse: [ ^self ].
 	evt hand obtainHalo: self.
 	newExtent := (target pointFromWorld: (evt cursorPoint - positionOffset)) - target topLeft.
 	evt shiftPressed ifTrue: [
@@ -846,6 +851,8 @@ HaloMorph >> doRot: evt with: rotHandle [
 	"Update the rotation of my target if it is rotatable.  Keep the relevant command object up to date."
 
 	| degrees |
+	
+	growingOrRotating ifFalse: [^self].
 	evt hand obtainHalo: self.
 	degrees := (evt cursorPoint - (target pointInWorld: target referencePosition)) degrees.
 	degrees := degrees - angleOffset degrees.
@@ -868,6 +875,7 @@ HaloMorph >> doRot: evt with: rotHandle [
 HaloMorph >> doScale: evt with: scaleHandle [
 	"Update the scale of my target if it is scalable."
 	| newHandlePos colorToUse |
+	growingOrRotating ifFalse: [ ^self ].
 	evt hand obtainHalo: self.
 	newHandlePos := evt cursorPoint - (scaleHandle extent // 2).
 	target scaleToMatch: newHandlePos.
@@ -959,13 +967,10 @@ HaloMorph >> handlerForBlueButtonDown: anEvent [
 
 { #category : #initialization }
 HaloMorph >> initialize [
-	"initialize the state of the receiver"
 	super initialize.
 
 	growingOrRotating := false.
-	self borderStyle: (SimpleBorder
-		width: 2
-		color: self theme settings menuSelectionColor)
+	self borderStyle: (SimpleBorder width: 2 color: self theme menuSelectionColor)
 ]
 
 { #category : #accessing }
@@ -975,7 +980,7 @@ HaloMorph >> innerTarget [
 
 ]
 
-{ #category : #stepping }
+{ #category : #'halos and balloon help' }
 HaloMorph >> localHaloBoundsFor: aMorph [
 	"aMorph may be in the hand and perhaps not in our world"
 
@@ -1079,26 +1084,26 @@ HaloMorph >> obtainHaloForEvent: evt andRemoveAllHandlesBut: aHandle [
 ]
 
 { #category : #events }
-HaloMorph >> popUpFor: aMorph event: evt [ 
+HaloMorph >> popUpFor: aMorph event: evt [
+
 	"This message is sent by morphs that explicitly request the halo on a button click. Note: anEvent is in aMorphs coordinate frame."
 
 	| hand anEvent |
+
 	self flag: #workAround.	"We should really have some event/hand here..."
-	anEvent := evt isNil 
-				ifTrue: 
-					[hand := aMorph world ifNotNil: [:w | w activeHand].
-					hand ifNil: [hand := aMorph world primaryHand]. 
-					hand lastEvent transformedBy: (aMorph transformedFrom: nil)]
-				ifFalse: 
-					[hand := evt hand.
-					evt].
+	anEvent := evt
+		ifNil: [ hand := aMorph world ifNotNil: [ :w | w activeHand ].
+			hand ifNil: [ hand := aMorph world primaryHand ].
+			hand lastEvent transformedBy: ( aMorph transformedFrom: nil )
+			]
+		ifNotNil: [ hand := evt hand.
+			evt
+			].
 	self target: aMorph.
 	hand halo: self.
 	hand world addMorphFront: self.
-	positionOffset := anEvent position 
-				- (aMorph point: aMorph position in: owner).
-	self startStepping.
-	
+	positionOffset := anEvent position - ( aMorph point: aMorph position in: owner ).
+	self startStepping
 ]
 
 { #category : #geometry }
@@ -1286,6 +1291,7 @@ HaloMorph >> startGrow: evt with: growHandle [
 	"Initialize resizing of my target.  Launch a command representing it, to support Undo"
 
 	| botRt |
+	growingOrRotating := true.
 	self obtainHaloForEvent: evt andRemoveAllHandlesBut: growHandle.
 	botRt := target point: target bottomRight in: owner.
 	positionOffset := (self world viewBox containsPoint: botRt)
@@ -1346,7 +1352,7 @@ HaloMorph >> step [
 	self bounds: newBounds
 ]
 
-{ #category : #testing }
+{ #category : #stepping }
 HaloMorph >> stepTime [
 
 	^ 0  "every cycle"

@@ -73,12 +73,14 @@ RubTextFieldMorph >> closeChooser [
 		ifNotNil: [entryCompletion closeChooser]
 ]
 
-{ #category : #configure }
+{ #category : #accessing }
 RubTextFieldMorph >> configureGhostText: aTextArea [
+
+	"Text Input always is in the middle of the text input"
+
 	super configureGhostText: aTextArea.
-	self hasKeyboardFocus
-		ifTrue: [ 
-			aTextArea left: self left]
+	aTextArea center: self scrollBounds center.
+	aTextArea left: self scrollBounds left 
 ]
 
 { #category : #defaults }
@@ -106,17 +108,29 @@ RubTextFieldMorph >> entryCompletion [
 
 { #category : #accessing }
 RubTextFieldMorph >> entryCompletion: anEntryCompletion [
+
 	entryCompletion := anEntryCompletion.
 	entryCompletion
 		ifNil: [ self withoutDropListButton ]
-		ifNotNil: [ 
-			self withDropListButton.
-			entryCompletion chooseBlock isNil
-			ifTrue: [entryCompletion chooseBlock: [:v | self setText: v. self acceptTextInModel ]]
-			ifFalse: [ | blk | 
-				blk := entryCompletion chooseBlock.
-				entryCompletion chooseBlock: [:v | self setText: v. self acceptTextInModel. blk value: v]]].
+		ifNotNil: [ self withDropListButton.
+			entryCompletion chooseBlock
+				ifNil: [ entryCompletion
+						chooseBlock: [ :v | 
+							self setText: v.
+							self acceptTextInModel
+							]
+					]
+				ifNotNil: [ | blk |
 
+					blk := entryCompletion chooseBlock.
+					entryCompletion
+						chooseBlock: [ :v | 
+							self setText: v.
+							self acceptTextInModel.
+							blk value: v
+							]
+					]
+			]
 ]
 
 { #category : #geometry }

@@ -4,7 +4,7 @@ RBSequenceNode is an AST node that represents a sequence of statements. Both RBB
 Instance Variables:
 	leftBar	<Integer | nil>	the position of the left | in the temporaries definition
 	rightBar	<Integer | nil>	the position of the right | in the temporaries definition
-	statements	<SequenceableCollection of: RBStatementNode>	the statement nodes
+	statements	<SequenceableCollection of: RBReturnNode or RBValueNode> the statement nodes
 	periods	<SequenceableCollection of: Integer>	the positions of all the periods that separate the statements
 	temporaries	<SequenceableCollection of: RBVariableNode>	the temporaries defined
 
@@ -63,8 +63,8 @@ RBSequenceNode >> = anObject [
 ]
 
 { #category : #visiting }
-RBSequenceNode >> acceptVisitor: aProgramNodeVisitor [ 
-	^aProgramNodeVisitor visitSequenceNode: self
+RBSequenceNode >> acceptVisitor: aProgramNodeVisitor [
+	^ aProgramNodeVisitor visitSequenceNode: self
 ]
 
 { #category : #'adding nodes' }
@@ -176,7 +176,7 @@ RBSequenceNode >> addSelfReturn [
 	| node |
 	self lastIsReturn
 		ifTrue: [ ^ self statements last ].
-	node := RBReturnNode value: (RBVariableNode named: 'self').
+	node := RBReturnNode value: (RBSelfNode new).
 	^ self addNode: node
 ]
 
@@ -248,24 +248,6 @@ RBSequenceNode >> defines: aName [
 { #category : #testing }
 RBSequenceNode >> directlyUses: aNode [ 
 	^false
-]
-
-{ #category : #generation }
-RBSequenceNode >> dumpOn: aStream [
-	aStream nextPutAll: self class name.
-	self temporaries
-		ifNotEmpty: [ aStream nextPutAll: ' temporaries: {'.
-			self temporaries
-				do: [ :each | 
-					each dumpOn: aStream.
-					aStream nextPutAll: '. ' ].
-			aStream nextPut: $} ].
-	aStream nextPutAll: ' statements: {'.
-	self statements
-		do: [ :each | 
-			each dumpOn: aStream.
-			aStream nextPutAll: '. ' ].
-	aStream nextPut: $}
 ]
 
 { #category : #comparing }
@@ -469,8 +451,11 @@ RBSequenceNode >> statements: stmtCollection [
 
 { #category : #accessing }
 RBSequenceNode >> stop [
-	^(periods isEmpty ifTrue: [0] ifFalse: [periods last]) 
-		max: (statements isEmpty ifTrue: [0] ifFalse: [statements last stop])
+	^{  
+	temporaries isEmpty ifTrue: [0] ifFalse: [ self temporaries last stop]. 
+	periods isEmpty ifTrue: [0] ifFalse: [periods last].
+	statements isEmpty ifTrue: [0] ifFalse: [statements last stop]
+	} max
 ]
 
 { #category : #accessing }

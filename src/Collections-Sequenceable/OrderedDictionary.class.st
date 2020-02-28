@@ -150,6 +150,11 @@ OrderedDictionary >> associationAt: aKey ifPresent: aBlock [
 ]
 
 { #category : #accessing }
+OrderedDictionary >> associationAt: key ifPresent: aPresentBlock ifAbsent: anAbsentBlock [
+	^ dictionary associationAt: key ifPresent: aPresentBlock ifAbsent: anAbsentBlock
+]
+
+{ #category : #accessing }
 OrderedDictionary >> associations [
 	| associations i |
 
@@ -262,6 +267,25 @@ OrderedDictionary >> at: aKey put: aValue [
 				ifFalse: [self growOrderedKeys].
 			orderedKeys at: oldSize + 1 put: aKey].
 	^ aValue.
+]
+
+{ #category : #accessing }
+OrderedDictionary >> at: key update: updateBlock [ 
+	"I am used to update the value at a given key, or if the key does not exist, to throw an error"
+	self at: key update: updateBlock initial: [ KeyNotFound signalFor: key ].
+]
+
+{ #category : #accessing }
+OrderedDictionary >> at: key update: updateBlock initial: initBlocktOrValue [
+	"I am used to update the value at a given key. The updateBlock is passed 
+	the existing value, and the result of the block is stored back.
+	If the key does not exist, store the value of the initBlocktOrValue.
+	initBlocktOrValue can be a block in case the initial value is expencive to compute."
+	| val |
+	val := self at: key ifAbsent: [ nil ].
+	val 
+		ifNil: [ self at: key put: (initBlocktOrValue value) ] 
+		ifNotNil: [ self at: key put: (updateBlock value: val) ]
 ]
 
 { #category : #accessing }
